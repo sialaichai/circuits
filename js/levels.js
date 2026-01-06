@@ -157,6 +157,23 @@ class LevelManager {
         };
     }
 
+createLevel(levelNumber, config) {
+        this.levels[levelNumber] = {
+            ...config,
+            maze: this.createMaze(10 + (levelNumber * 2), 10 + (levelNumber * 2), levelNumber),
+            questionPositions: this.generateQuestionPositions(levelNumber),
+            enemies: this.generateEnemies(levelNumber),
+            collectibles: this.generateCollectibles(levelNumber)
+        };
+
+        // Ensure path exists after creating maze
+        this.carvePath(
+            this.levels[levelNumber].maze,
+            this.levels[levelNumber].startPos,
+            this.levels[levelNumber].exitPos
+        );
+    }
+
     createMaze(width, height, level) {
         // Create a simple maze algorithm
         const maze = [];
@@ -176,42 +193,170 @@ class LevelManager {
                 }
             }
         }
-        
-        // Ensure path from start to exit
-        this.carvePath(maze, this.levels[level].startPos, this.levels[level].exitPos);
-        
         return maze;
     }
 
     carvePath(maze, start, end) {
+        if (!start || !end) {
+            console.error('Start or end position not defined!');
+            return;
+        }
+
+        // Ensure start and end are within maze bounds
+        const maxX = maze.length - 1;
+        const maxY = maze[0].length - 1;
+        
+        start.x = Math.max(0, Math.min(start.x, maxX));
+        start.y = Math.max(0, Math.min(start.y, maxY));
+        end.x = Math.max(0, Math.min(end.x, maxX));
+        end.y = Math.max(0, Math.min(end.y, maxY));
+
         // Simple path carving algorithm
         let x = start.x;
         let y = start.y;
         
+        // Mark start as path
+        maze[x][y].type = 'path';
+        
+        // Move toward end
+        const path = [];
         while (x !== end.x || y !== end.y) {
-            maze[x][y].type = 'path';
+            // Store current position
+            path.push({x, y});
             
+            // Move toward end position
             if (x < end.x) x++;
             else if (x > end.x) x--;
             
             if (y < end.y) y++;
             else if (y > end.y) y--;
             
-            maze[x][y].type = 'path';
+            // Mark as path
+            if (maze[x]) {
+                maze[x][y].type = 'path';
+            }
+        }
+        
+        // Mark end as path
+        if (maze[end.x]) {
+            maze[end.x][end.y].type = 'path';
         }
         
         // Carve some extra paths for variety
-        for (let i = 0; i < 20; i++) {
+        this.addRandomPaths(maze, level);
+    }
+
+    addRandomPaths(maze, level) {
+        const pathCount = 10 + (level * 5);
+        for (let i = 0; i < pathCount; i++) {
             const randX = Math.floor(Math.random() * maze.length);
             const randY = Math.floor(Math.random() * maze[0].length);
-            if (maze[randX][randY].type === 'wall') {
+            if (maze[randX] && maze[randX][randY]) {
                 maze[randX][randY].type = 'path';
             }
         }
     }
 
+    generateQuestionPositions(level) {
+        const positions = [];
+        const questionCount = level === 1 ? 3 : 4 + (level === 5 ? 1 : 0);
+        
+        for (let i = 0; i < questionCount; i++) {
+            positions.push({
+                x: 2 + (i * 3),
+                y: 2 + (i * 2),
+                z: i % 2,
+                questionId: null
+            });
+        }
+        return positions;
+    }
+
+    generateEnemies(level) {
+        const enemies = [];
+        const enemyCount = 2 + level;
+        const enemyTypes = ['resistor', 'capacitor', 'inductor', 'transistor', 'ic'];
+        
+        for (let i = 0; i < enemyCount; i++) {
+            enemies.push({
+                type: enemyTypes[i % enemyTypes.length],
+                x: 3 + (i * 2),
+                y: 3 + (i * 2),
+                z: 0,
+                speed: 0.8 + (level * 0.2),
+                pattern: i % 2 === 0 ? 'patrol' : 'circle'
+            });
+        }
+        return enemies;
+    }
+
+    generateCollectibles(level) {
+        const collectibles = [];
+        const collectibleTypes = ['battery', 'wire', 'multimeter', 'oscilloscope', 'gold_wire', 'diamond_chip'];
+        
+        // Always include a battery at start
+        collectibles.push({
+            type: 'battery',
+            x: 1,
+            y: 1,
+            z: 0,
+            value: 100 * level
+        });
+        
+        // Add random collectibles
+        for (let i = 0; i < 3 + level; i++) {
+            collectibles.push({
+                type: collectibleTypes[i % collectibleTypes.length],
+                x: 2 + (i * 2),
+                y: 8 - (i * 2),
+                z: i % 3,
+                value: (50 + (level * 25)) * (i + 1)
+            });
+        }
+        
+        // Add special collectible at exit
+        collectibles.push({
+            type: level === 5 ? 'diamond_chip' : 'gold_wire',
+            x: this.levels[level].exitPos.x - 1,
+            y: this.levels[level].exitPos.y - 1,
+            z: this.levels[level].exitPos.z,
+            value: 500 * level
+        });
+        
+        return collectibles;
+    }
+
     getCurrentLevel() {
+        if (!this.levels[this.currentLevel]) {
+            console.error(`Level ${this.currentLevel} not found!`);
+            return this.getDefaultLevel();
+        }
         return this.levels[this.currentLevel];
+    }
+
+    getDefaultLevel() {
+        return {
+            name: "Default Level",
+            theme: "Basic Training",
+            color: "#4CAF50",
+            bloomLevel: 1,
+            questionsRequired: 3,
+            maze: this.createMaze(10, 10, 1),
+            startPos: { x: 1, y: 1, z: 0 },
+            exitPos: { x: 8, y: 8, z: 0 },
+            questionPositions: [
+                { x: 3, y: 3, z: 0, questionId: null },
+                { x: 6, y: 4, z: 0, questionId: null },
+                { x: 4, y: 7, z: 0, questionId: null }
+            ],
+            enemies: [
+                { type: "resistor", x: 5, y: 5, z: 0, speed: 1 }
+            ],
+            collectibles: [
+                { type: "battery", x: 2, y: 8, z: 0, value: 100 },
+                { type: "wire", x: 8, y: 1, z: 0, value: 50 }
+            ]
+        };
     }
 
     nextLevel() {
@@ -229,18 +374,29 @@ class LevelManager {
     }
 
     getLevelCompletion() {
-        const saved = localStorage.getItem('circuitRunnerProgress');
-        return saved ? JSON.parse(saved) : { level: 1, scores: {} };
+        try {
+            const saved = localStorage.getItem('circuitRunnerProgress');
+            return saved ? JSON.parse(saved) : { level: 1, scores: {} };
+        } catch (e) {
+            console.error('Error loading progress:', e);
+            return { level: 1, scores: {} };
+        }
     }
 
     saveProgress(score, questionsSolved) {
-        const progress = this.getLevelCompletion();
-        progress.level = Math.max(progress.level, this.currentLevel + 1);
-        progress.scores[this.currentLevel] = {
-            score: score,
-            questions: questionsSolved,
-            time: Date.now()
-        };
-        localStorage.setItem('circuitRunnerProgress', JSON.stringify(progress));
+        try {
+            const progress = this.getLevelCompletion();
+            progress.level = Math.max(progress.level, this.currentLevel + 1);
+            progress.scores[this.currentLevel] = {
+                score: score,
+                questions: questionsSolved,
+                time: Date.now(),
+                completed: true
+            };
+            localStorage.setItem('circuitRunnerProgress', JSON.stringify(progress));
+            console.log('Progress saved:', progress);
+        } catch (e) {
+            console.error('Error saving progress:', e);
+        }
     }
 }
