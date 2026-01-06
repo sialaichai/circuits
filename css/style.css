@@ -1,0 +1,438 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #0a0a2a, #1a1a3a);
+    color: #fff;
+    overflow: hidden;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Loading Screen */
+#loadingScreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #0a0a2a;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.loader {
+    text-align: center;
+}
+
+.circuit-board {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    margin: 0 auto 30px;
+    background: #0f1a30;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.circuit-board::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        linear-gradient(90deg, transparent 50%, rgba(0, 255, 255, 0.1) 50%) 0 0 / 20px 20px,
+        linear-gradient(0deg, transparent 50%, rgba(0, 255, 255, 0.1) 50%) 0 0 / 20px 20px;
+}
+
+.resistor {
+    position: absolute;
+    top: 50%;
+    left: 20%;
+    width: 60px;
+    height: 20px;
+    background: #ff9900;
+    border-radius: 10px;
+    transform: translate(-50%, -50%);
+    animation: pulse 2s infinite;
+}
+
+.wire {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100px;
+    height: 4px;
+    background: #00ffff;
+    transform: translate(-50%, -50%);
+}
+
+.bulb {
+    position: absolute;
+    top: 50%;
+    right: 20%;
+    width: 30px;
+    height: 30px;
+    background: #ffff00;
+    border-radius: 50%;
+    transform: translate(50%, -50%);
+    animation: glow 1.5s infinite alternate;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); }
+    50% { transform: translate(-50%, -50%) scale(1.1); }
+}
+
+@keyframes glow {
+    from { box-shadow: 0 0 10px #ffff00; }
+    to { box-shadow: 0 0 30px #ffff00, 0 0 40px #ffff00; }
+}
+
+/* Screens */
+.screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(135deg, #0a0a2a, #1a1a3a);
+}
+
+.title-container {
+    text-align: center;
+    max-width: 900px;
+    padding: 40px;
+    background: rgba(0, 20, 40, 0.8);
+    border-radius: 20px;
+    box-shadow: 0 0 50px rgba(0, 255, 255, 0.3);
+    border: 2px solid #00ffff;
+}
+
+.title-container h1 {
+    font-size: 4rem;
+    margin-bottom: 10px;
+    background: linear-gradient(45deg, #00ffff, #0099ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+}
+
+.title-container h2 {
+    font-size: 1.5rem;
+    margin-bottom: 30px;
+    color: #99ffff;
+}
+
+/* Bloom Levels */
+.bloom-levels {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 15px;
+    margin: 40px 0;
+}
+
+.bloom-card {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 20px;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border: 2px solid transparent;
+}
+
+.bloom-card:hover {
+    transform: translateY(-5px);
+    border-color: #00ffff;
+    box-shadow: 0 5px 20px rgba(0, 255, 255, 0.3);
+}
+
+.bloom-card:nth-child(1) { border-top: 4px solid #4CAF50; }
+.bloom-card:nth-child(2) { border-top: 4px solid #2196F3; }
+.bloom-card:nth-child(3) { border-top: 4px solid #FF9800; }
+.bloom-card:nth-child(4) { border-top: 4px solid #9C27B0; }
+.bloom-card:nth-child(5) { border-top: 4px solid #F44336; }
+
+.bloom-card i {
+    font-size: 2rem;
+    margin-bottom: 10px;
+    display: block;
+}
+
+.bloom-card h3 {
+    font-size: 1rem;
+    margin-bottom: 5px;
+}
+
+.bloom-card p {
+    font-size: 0.8rem;
+    color: #aaa;
+}
+
+/* Buttons */
+.btn-primary, .btn-secondary, .btn-small {
+    padding: 15px 30px;
+    border: none;
+    border-radius: 25px;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin: 10px;
+}
+
+.btn-primary {
+    background: linear-gradient(45deg, #00ffff, #0099ff);
+    color: #000;
+    font-weight: bold;
+}
+
+.btn-primary:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border: 2px solid #00ffff;
+}
+
+.btn-secondary:hover {
+    background: rgba(0, 255, 255, 0.1);
+}
+
+.btn-small {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+}
+
+/* Game Container */
+#gameContainer {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+}
+
+#gameCanvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+/* HUD */
+#hud {
+    position: absolute;
+    top: 20px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 30px;
+    pointer-events: none;
+}
+
+.hud-left, .hud-right {
+    display: flex;
+    gap: 20px;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 15px 25px;
+    border-radius: 15px;
+    backdrop-filter: blur(10px);
+}
+
+.hud-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.2rem;
+}
+
+.hud-item i {
+    color: #00ffff;
+}
+
+#controlsHelp {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    padding: 15px 25px;
+    border-radius: 10px;
+    text-align: center;
+    border: 1px solid #00ffff;
+}
+
+/* Modals */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: linear-gradient(135deg, #0a0a2a, #1a1a3a);
+    padding: 40px;
+    border-radius: 20px;
+    max-width: 600px;
+    width: 90%;
+    border: 2px solid #00ffff;
+    box-shadow: 0 0 50px rgba(0, 255, 255, 0.3);
+}
+
+/* Question Modal */
+.question-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid rgba(0, 255, 255, 0.3);
+}
+
+.bloom-tag {
+    padding: 5px 15px;
+    border-radius: 15px;
+    font-size: 0.9rem;
+    font-weight: bold;
+}
+
+.circuit-diagram {
+    background: rgba(0, 20, 40, 0.8);
+    padding: 20px;
+    border-radius: 10px;
+    margin: 20px 0;
+    min-height: 150px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.options-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 15px;
+    margin: 25px 0;
+}
+
+.option-button {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid transparent;
+    padding: 15px;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: left;
+}
+
+.option-button:hover {
+    background: rgba(0, 255, 255, 0.1);
+    border-color: #00ffff;
+}
+
+.option-button.selected {
+    background: rgba(0, 255, 255, 0.2);
+    border-color: #00ffff;
+}
+
+.question-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 30px;
+}
+
+.hint-box {
+    text-align: right;
+}
+
+#hintText {
+    margin-top: 10px;
+    padding: 10px;
+    background: rgba(255, 215, 0, 0.1);
+    border-radius: 5px;
+    border-left: 3px solid #ffd700;
+}
+
+/* Level Complete */
+.celebration {
+    text-align: center;
+}
+
+.celebration h2 {
+    color: #ffd700;
+    margin-bottom: 30px;
+}
+
+.stats {
+    background: rgba(0, 20, 40, 0.8);
+    padding: 20px;
+    border-radius: 10px;
+    margin: 20px 0;
+}
+
+.stats p {
+    margin: 10px 0;
+    font-size: 1.2rem;
+    display: flex;
+    justify-content: space-between;
+}
+
+.stats span {
+    color: #00ffff;
+    font-weight: bold;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .bloom-levels {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .title-container h1 {
+        font-size: 2.5rem;
+    }
+    
+    .bloom-levels {
+        grid-template-columns: 1fr;
+    }
+    
+    #hud {
+        flex-direction: column;
+        gap: 10px;
+        align-items: center;
+    }
+    
+    .hud-left, .hud-right {
+        width: 90%;
+        justify-content: space-around;
+    }
+}
