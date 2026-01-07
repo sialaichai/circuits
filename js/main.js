@@ -140,3 +140,31 @@ window.utils = {
     getBloomName,
     toggleFullscreen
 };
+
+// main.js - Wait for everything to load
+window.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM loaded, checking dependencies...');
+    
+    // Wait a bit more for all scripts
+    setTimeout(() => {
+        console.log('Checking libraries:');
+        console.log('- THREE:', typeof THREE);
+        console.log('- CANNON:', typeof CANNON);
+        console.log('- Howler:', typeof Howler);
+        
+        if (typeof THREE === 'undefined') {
+            console.error('Three.js not loaded!');
+            alert('3D engine failed to load. Please check:\n1. Internet connection\n2. Ad blockers\n3. Refresh the page');
+            return;
+        }
+        
+        if (typeof CANNON === 'undefined') {
+            console.error('Cannon.js not loaded!');
+            alert('Physics engine failed to load. Please refresh.');
+            return;
+        }
+        
+        console.log('All dependencies loaded, starting game...');
+        window.game = new Game();
+    }, 100);
+});
