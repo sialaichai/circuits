@@ -807,53 +807,44 @@ createMaze(maze) {
         }
     }
 
-    animate() {
-        requestAnimationFrame(() => this.animate());
+animate() {
+    requestAnimationFrame(() => this.animate());
+    
+    if (!this.isGameActive || this.isPaused) return;
+    
+    const deltaTime = Math.min(this.clock.getDelta(), 0.1);
+    
+    // Update physics
+    if (this.world) {
+        this.world.step(1/60, deltaTime, 3);
+    }
+    
+    // Update player
+    if (this.player) {
+        this.player.update(deltaTime);
         
-        // Don't update if game is not active or paused
-        if (!this.isGameActive || this.isPaused) return;
+        // 🔴 FIX: Use TOP-DOWN camera (don't follow player too closely)
+        const playerPos = this.player.mesh.position;
+        const maze = this.levelManager.getCurrentLevel().maze;
+        const mazeHeight = maze ? maze[0].length : 20;
         
-        // Get time since last frame
-        const deltaTime = this.clock.getDelta();
+        // Keep camera HIGH above player (top-down view)
+        const targetCameraPos = new THREE.Vector3(
+            playerPos.x,           // Same X as player
+            mazeHeight * 1.2,      // Keep HIGH above (1.2x maze height)
+            playerPos.z + 5        // Slightly behind
+        );
         
-        // Update physics world if it exists
-        if (this.world) {
-            try {
-                this.world.step(1/60, deltaTime, 3);
-            } catch (e) {
-                console.error('Physics step error:', e);
-            }
-        }
+        // Smooth camera movement
+        this.camera.position.lerp(targetCameraPos, 0.05);
         
-        // Update player if it exists
-        if (this.player) {
-            try {
-                this.player.update(deltaTime);
-                
-                // Update camera to follow player
-                const playerPos = this.player.mesh.position;
-                
-                // Calculate target camera position (third-person view)
-                const cameraDistance = 8;
-                const cameraHeight = 5;
-                const cameraOffset = 3;
-                
-                const targetCameraPos = new THREE.Vector3(
-                    playerPos.x - cameraDistance,
-                    playerPos.y + cameraHeight,
-                    playerPos.z + cameraOffset
-                );
-                
-                // Smooth camera movement
-                this.camera.position.lerp(targetCameraPos, 0.05);
-                
-                // Make camera look at player
-                this.camera.lookAt(playerPos);
-                
-            } catch (e) {
-                console.error('Player update error:', e);
-            }
-        }
+        // Look DOWN at player (top-down view)
+        this.camera.lookAt(playerPos.x, 0, playerPos.z);
+    }
+    
+    // Render
+    this.renderer.render(this.scene, this.camera);
+}
         
         // Update enemies if method exists
         if (this.updateEnemies && typeof this.updateEnemies === 'function') {
