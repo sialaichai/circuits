@@ -269,6 +269,8 @@ loadLevel(level) {
             this.scene.remove(child);
         }
     }
+    // 2. ADD THIS: Restore the lights!
+        this.setupLighting();
     
     // Reset physics
     if (this.world) {
@@ -299,11 +301,15 @@ loadLevel(level) {
     const playerZ = levelData.startPos.y;        // Depth based on grid row (y)
     
     // Position camera behind and above the player
-    this.camera.position.set(
-    playerX,        
-    playerY + 12,   // High up to see the maze structure
-    playerZ + 10    // Backwards to frame the view
-    );
+   const pX = levelData.startPos.x;
+    const pY = (levelData.startPos.z * 5); // Height
+    const pZ = levelData.startPos.y;        // Depth
+
+    // Position camera: High up (Y+12) and pulled back (Z+10)
+    this.camera.position.set(pX, pY + 12, pZ + 10);
+    
+    // Look at the player's ground position
+    this.camera.lookAt(pX, pY, pZ);
 
 // Look at the player's position on the ground
 this.camera.lookAt(playerX, playerY, playerZ);
