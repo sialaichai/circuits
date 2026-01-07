@@ -15,9 +15,24 @@ class Game {
         this.questionsSolved = 0;
         this.startTime = 0;
         this.currentLevel = 1;
-        
         this.clock = new THREE.Clock();
         this.mixers = [];
+        // Check if Three.js is loaded
+        if (typeof THREE === 'undefined') {
+            console.error('THREE is not defined! Check script loading order.');
+            console.log('Three.js should load BEFORE game.js');
+            
+            // Show error message
+            this.showLoadError('Three.js physics engine failed to load. Please refresh the page.');
+            return;
+        }
+        
+        // Check if Cannon.js is loaded
+        if (typeof CANNON === 'undefined') {
+            console.error('CANNON is not defined!');
+            this.showLoadError('Physics engine failed to load. Please refresh.');
+            return;
+        }
         
         this.init();
     }
