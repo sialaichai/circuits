@@ -291,17 +291,18 @@ loadLevel(level) {
     const mazeSize = Math.max(levelData.maze.length, levelData.maze[0].length);
     
     // Position camera behind player (third-person view)
+    // CORRECT: Maps grid Y to World Z
+    // We assume levelData.startPos.z is the "layer" or floor height (usually 0)
     this.camera.position.set(
-        levelData.startPos.x - 5,  // Behind player
-        levelData.startPos.y + 8,  // Above player
-        levelData.startPos.z + 5   // To the side
+        levelData.startPos.x - 6,   // Move back in X
+        10,                         // Fixed height for good overview
+        levelData.startPos.y + 6    // Move back in Z (using startPos.y as Z)
     );
     
-    // Look at player
     this.camera.lookAt(
         levelData.startPos.x,
-        levelData.startPos.y + 1,  // Look at player's body, not feet
-        levelData.startPos.z
+        0,                          // Look at ground level
+        levelData.startPos.y        // Look at player's Z position
     );
     
     console.log('📷 Camera positioned at:', this.camera.position);
