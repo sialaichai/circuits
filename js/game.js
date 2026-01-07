@@ -114,31 +114,49 @@ class Game {
     }
 
     setupLighting() {
-        // Ambient light
-        const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
-        this.scene.add(ambientLight);
-        
-        // Directional light (sun)
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        directionalLight.position.set(10, 20, 5);
-        directionalLight.castShadow = true;
-        directionalLight.shadow.mapSize.width = 2048;
-        directionalLight.shadow.mapSize.height = 2048;
-        directionalLight.shadow.camera.left = -50;
-        directionalLight.shadow.camera.right = 50;
-        directionalLight.shadow.camera.top = 50;
-        directionalLight.shadow.camera.bottom = -50;
-        this.scene.add(directionalLight);
-        
-        // Point lights for circuit effects
-        const pointLight1 = new THREE.PointLight(0x00ffff, 0.5, 20);
-        pointLight1.position.set(5, 5, 5);
-        this.scene.add(pointLight1);
-        
-        const pointLight2 = new THREE.PointLight(0xff00ff, 0.3, 20);
-        pointLight2.position.set(-5, 5, -5);
-        this.scene.add(pointLight2);
-    }
+    console.log('Setting up lighting...');
+    
+    // 1. Ambient Light (fills all shadows)
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.8); // Increased intensity
+    this.scene.add(ambientLight);
+    
+    // 2. Main Directional Light (like sunlight)
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    directionalLight.position.set(20, 30, 10);
+    directionalLight.castShadow = true;
+    
+    // Configure shadow properties
+    directionalLight.shadow.mapSize.width = 2048;
+    directionalLight.shadow.mapSize.height = 2048;
+    directionalLight.shadow.camera.left = -50;
+    directionalLight.shadow.camera.right = 50;
+    directionalLight.shadow.camera.top = 50;
+    directionalLight.shadow.camera.bottom = -50;
+    directionalLight.shadow.camera.near = 0.5;
+    directionalLight.shadow.camera.far = 100;
+    
+    this.scene.add(directionalLight);
+    
+    // 3. Fill Light (from opposite side)
+    const fillLight = new THREE.DirectionalLight(0xaaaaff, 0.3);
+    fillLight.position.set(-20, 20, -10);
+    this.scene.add(fillLight);
+    
+    // 4. Point Lights for special effects
+    const pointLight1 = new THREE.PointLight(0x00ffff, 0.5, 30);
+    pointLight1.position.set(10, 10, 10);
+    this.scene.add(pointLight1);
+    
+    const pointLight2 = new THREE.PointLight(0xff00ff, 0.3, 30);
+    pointLight2.position.set(-10, 5, -10);
+    this.scene.add(pointLight2);
+    
+    // 5. Hemisphere Light (sky/ground lighting)
+    const hemisphereLight = new THREE.HemisphereLight(0xaaaaaa, 0x444444, 0.6);
+    this.scene.add(hemisphereLight);
+    
+    console.log('Lighting setup complete');
+}
 
     setupEventListeners() {
         window.addEventListener('resize', () => this.onWindowResize());
