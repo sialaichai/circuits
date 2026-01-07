@@ -751,60 +751,77 @@ addTestMarker(position) {
     animate() {
         requestAnimationFrame(() => this.animate());
         
+        // Don't update if game is not active or paused
         if (!this.isGameActive || this.isPaused) return;
         
+        // Get time since last frame
         const deltaTime = this.clock.getDelta();
         
-        // Update physics
+        // Update physics world if it exists
         if (this.world) {
-            this.world.step(1/60, deltaTime, 3);
+            try {
+                this.world.step(1/60, deltaTime, 3);
+            } catch (e) {
+                console.error('Physics step error:', e);
+            }
         }
         
-        // Update player
+        // Update player if it exists
         if (this.player) {
-            this.player.update(deltaTime);
-            
-            // Get player position
-            const playerPos = this.player.mesh.position;
-            
-            // Calculate camera position (third-person view)
-            const cameraDistance = 8;
-            const cameraHeight = 5;
-            
-            // Smooth camera follow
-            const targetCameraPos = new THREE.Vector3(
-                playerPos.x - cameraDistance,
-                playerPos.y + cameraHeight,
-                playerPos.z
-            );
-            
-            // Use lerp for smooth movement
-            this.camera.position.lerp(targetCameraPos, 0.1);
-            
-            // Make camera look slightly above player
-            const lookAtPos = new THREE.Vector3(
-                playerPos.x,
-                playerPos.y + 2,
-                playerPos.z
-            );
-            this.camera.lookAt(lookAtPos);
+            try {
+                this.player.update(deltaTime);
+                
+                // Update camera to follow player
+                const playerPos = this.player.mesh.position;
+                
+                // Calculate target camera position (third-person view)
+                const cameraDistance = 8;
+                const cameraHeight = 5;
+                const cameraOffset = 3;
+                
+                const targetCameraPos = new THREE.Vector3(
+                    playerPos.x - cameraDistance,
+                    playerPos.y + cameraHeight,
+                    playerPos.z + cameraOffset
+                );
+                
+                // Smooth camera movement
+                this.camera.position.lerp(targetCameraPos, 0.05);
+                
+                // Make camera look at player
+                this.camera.lookAt(playerPos);
+                
+            } catch (e) {
+                console.error('Player update error:', e);
+            }
         }
         
-        // Render scene
-        this.renderer.render(this.scene, this.camera);
-    }
+        // Update enemies if method exists
+        if (this.updateEnemies && typeof this.updateEnemies === 'function') {
+            try {
+                this.updateEnemies(deltaTime);
+            } catch (e) {
+                console.error('Enemy update error:', e);
+            }
+        }
         
-        // Update enemies
-        this.updateEnemies(deltaTime);
+        // Update animations if mixers exist
+        if (this.mixers && this.mixers.length > 0) {
+            this.mixers.forEach(mixer => {
+                try {
+                    mixer.update(deltaTime);
+                } catch (e) {
+                    console.error('Mixer update error:', e);
+                }
+            });
+        }
         
-        // Update mixers (animations)
-        this.mixers.forEach(mixer => mixer.update(deltaTime));
-        
-        // Render scene
-        this.renderer.render(this.scene, this.camera);
-        
-        // Update HUD timer
-        this.updateHUD();
+        // Render the scene
+        try {
+            this.renderer.render(this.scene, this.camera);
+        } catch (e) {
+            console.error('Render error:', e);
+        }
     }
 
     updateEnemies(deltaTime) {
