@@ -211,85 +211,152 @@ class Game {
         this.startGame(progress.level);
     }
 
-    loadLevel(level) {
-        // Clear existing scene
-        while(this.scene.children.length > 0){ 
-            this.scene.remove(this.scene.children[0]); 
+loadLevel(level) {
+    console.log('Loading level', level);
+    
+    // Clear existing scene
+    while(this.scene.children.length > 0){ 
+        const child = this.scene.children[0];
+        if (child !== this.camera && child !== this.testCube) { // Keep camera and test cube
+            this.scene.remove(child); 
         }
-        
-        // Reset physics world
+    }
+    
+    // Reset physics world if it exists
+    if (this.world) {
         this.world = new CANNON.World();
         this.world.gravity.set(0, -9.82, 0);
-        
-        // Re-add lighting
-        this.setupLighting();
-        
-        // Get level data
-        const levelData = this.levelManager.getCurrentLevel();
-        
-        // Create maze
-        this.createMaze(levelData.maze);
-        
-        // Create player
-        this.player = new Player(this, levelData.startPos);
-        
-        // Create question gates
-        this.createQuestionGates(levelData.questionPositions);
-        
-        // Create enemies
-        this.createEnemies(levelData.enemies);
-        
-        // Create collectibles
-        this.createCollectibles(levelData.collectibles);
-        
-        // Create exit
-        this.createExit(levelData.exitPos);
-        
-        // Update level display
-        this.ui.updateLevelDisplay(level, levelData.name);
     }
+    
+    // Re-add lighting
+    this.setupLighting();
+    
+    // Get level data
+    const levelData = this.levelManager.getCurrentLevel();
+    console.log('Level data:', levelData);
+    
+    // Create maze
+    this.createMaze(levelData.maze);
+    
+    // Create player at START position (not inside walls!)
+    this.player = new Player(this, levelData.startPos);
+    
+    // Position camera ABOVE and BEHIND player
+    const startPos = levelData.startPos;
+    this.camera.position.set(
+        startPos.x - 5,  // 5 units to the left
+        startPos.y + 10, // 10 units above
+        startPos.z + 5   // 5 units behind
+    );
+    
+    // Make camera look at player start position
+    this.camera.lookAt(
+        startPos.x,
+        startPos.y + 1,  // Look at player's height
+        startPos.z
+    );
+    
+    console.log('Camera positioned at:', this.camera.position);
+    console.log('Camera looking at:', startPos);
+    
+    // Create other level elements
+    this.createQuestionGates(levelData.questionPositions);
+    this.createEnemies(levelData.enemies);
+    this.createCollectibles(levelData.collectibles);
+    this.createExit(levelData.exitPos);
+    
+    // Add a test object to verify visibility
+    this.addTestMarker(startPos);
+    
+    // Update UI
+    this.ui.updateLevelDisplay(level, levelData.name);
+    
+    // Force render
+    this.renderer.render(this.scene, this.camera);
+}
+
+// Add this helper method
+addTestMarker(position) {
+    // Add a visible marker at player start position
+    const markerGeometry = new THREE.SphereGeometry(0.5, 8, 8);
+    const markerMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0xffff00,
+        transparent: true,
+        opacity: 0.7
+    });
+    const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+    marker.position.set(position.x, position.y + 2, position.z);
+    this.scene.add(marker);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+        if (this.scene && marker.parent === this.scene) {
+            this.scene.remove(marker);
+        }
+    }, 3000);
+    
+    console.log('Added yellow marker at start position');
+}
 
     createMaze(maze) {
+        console.log('Creating maze...');
+        
+        // Store maze reference for debugging
+        this.currentMaze = maze;
+        
         const wallGeometry = new THREE.BoxGeometry(1, 2, 1);
         const wallMaterial = new THREE.MeshPhongMaterial({ 
-            color: 0x2a2a4a,
-            emissive: 0x0a0a1a,
-            shininess: 30
+            color: 0x3a3a6a,
+            emissive: 0x1a1a4a,
+            emissiveIntensity: 0.3
         });
         
-        const pathGeometry = new THREE.BoxGeometry(1, 0.1, 1);
-        const pathMaterial = new THREE.MeshPhongMaterial({ 
-            color: 0x1a1a3a,
-            emissive: 0x0a0a2a
+        const floorGeometry = new THREE.BoxGeometry(1, 0.1, 1);
+        const floorMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x2a2a5a,
+            emissive: 0x1a1a3a,
+            emissiveIntensity: 0.2
         });
+        
+        // Count walls for debugging
+        let wallCount = 0;
+        let floorCount = 0;
         
         for (let x = 0; x < maze.length; x++) {
             for (let y = 0; y < maze[x].length; y++) {
                 const cell = maze[x][y];
                 
                 if (cell.type === 'wall') {
+                    // Create wall
                     const wall = new THREE.Mesh(wallGeometry, wallMaterial);
-                    wall.position.set(x, cell.height, y);
+                    wall.position.set(x, 1, y); // Center at y=1 (height 2)
                     wall.castShadow = true;
                     wall.receiveShadow = true;
                     this.scene.add(wall);
-                    
-                    // Add physics body
-                    const wallBody = new CANNON.Body({
-                        mass: 0,
-                        position: new CANNON.Vec3(x, cell.height, y)
-                    });
-                    const wallShape = new CANNON.Box(new CANNON.Vec3(0.5, 1, 0.5));
-                    wallBody.addShape(wallShape);
-                    this.world.addBody(wallBody);
+                    wallCount++;
                 } else {
-                    const path = new THREE.Mesh(pathGeometry, pathMaterial);
-                    path.position.set(x, -0.5, y);
-                    path.receiveShadow = true;
-                    this.scene.add(path);
+                    // Create floor
+                    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+                    floor.position.set(x, -0.45, y);
+                    floor.receiveShadow = true;
+                    this.scene.add(floor);
+                    floorCount++;
                 }
             }
         }
+        
+        console.log(`Created ${wallCount} walls and ${floorCount} floor tiles`);
+        
+        // Add a large ground plane under everything
+        const groundGeometry = new THREE.PlaneGeometry(50, 50);
+        const groundMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x1a1a3a,
+            side: THREE.DoubleSide
+        });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.y = -1;
+        this.scene.add(ground);
     }
 
     createQuestionGates(positions) {
@@ -689,24 +756,43 @@ class Game {
         const deltaTime = this.clock.getDelta();
         
         // Update physics
-        this.world.step(1/60, deltaTime, 3);
+        if (this.world) {
+            this.world.step(1/60, deltaTime, 3);
+        }
         
         // Update player
         if (this.player) {
             this.player.update(deltaTime);
             
-            // Update camera to follow player
+            // Get player position
             const playerPos = this.player.mesh.position;
-            this.camera.position.set(
-                playerPos.x - 5,
-                playerPos.y + 5,
-                playerPos.z + 5
-            );
-            this.camera.lookAt(playerPos);
             
-            // Check for exit
-            this.checkExit(playerPos);
+            // Calculate camera position (third-person view)
+            const cameraDistance = 8;
+            const cameraHeight = 5;
+            
+            // Smooth camera follow
+            const targetCameraPos = new THREE.Vector3(
+                playerPos.x - cameraDistance,
+                playerPos.y + cameraHeight,
+                playerPos.z
+            );
+            
+            // Use lerp for smooth movement
+            this.camera.position.lerp(targetCameraPos, 0.1);
+            
+            // Make camera look slightly above player
+            const lookAtPos = new THREE.Vector3(
+                playerPos.x,
+                playerPos.y + 2,
+                playerPos.z
+            );
+            this.camera.lookAt(lookAtPos);
         }
+        
+        // Render scene
+        this.renderer.render(this.scene, this.camera);
+    }
         
         // Update enemies
         this.updateEnemies(deltaTime);
@@ -779,6 +865,42 @@ class Game {
         this.isPaused = true;
         this.levelManager.saveProgress(this.score, this.questionsSolved);
         this.ui.showLevelComplete(this.score, this.questionsSolved);
+    }
+
+
+    debugSceneAndCamera() {
+    console.log('=== SCENE & CAMERA DEBUG ===');
+    
+    // 1. Check scene contents
+    console.log('Scene has', this.scene.children.length, 'children:');
+    this.scene.children.forEach((child, i) => {
+        console.log(`  ${i}: ${child.type || child.constructor.name} at`, child.position);
+    });
+    
+    // 2. Check camera
+    console.log('Camera position:', this.camera.position);
+    console.log('Camera rotation:', this.camera.rotation);
+    
+    // 3. Add debug objects to understand positions
+    this.addDebugHelpers();
+}
+
+    addDebugHelpers() {
+        // Add axes helper at origin
+        const axesHelper = new THREE.AxesHelper(5);
+        axesHelper.position.set(0, 0, 0);
+        this.scene.add(axesHelper);
+        
+        // Add grid helper
+        const gridHelper = new THREE.GridHelper(20, 20, 0x00ffff, 0x444444);
+        gridHelper.position.y = -0.5;
+        this.scene.add(gridHelper);
+        
+        // Add camera helper
+        const cameraHelper = new THREE.CameraHelper(this.camera);
+        this.scene.add(cameraHelper);
+        
+        console.log('Added debug helpers: axes, grid, camera helper');
     }
 }
 
