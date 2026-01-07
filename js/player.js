@@ -15,9 +15,10 @@ class Player {
         this.createPlayerMesh();
         // CORRECT: Maps x->x, z->y (height), y->z
         // startPos.z comes from levels.js as the 'layer' (0, 1, 2 etc), so we use it for height
+        // CORRECT COORDINATE MAPPING
         const worldX = startPos.x;
-        const worldY = (startPos.z * 2) + 2; // Lift slightly above floor
-        const worldZ = startPos.y;
+        const worldY = (startPos.z * 2) + 2; // Height (based on layer z)
+        const worldZ = startPos.y;           // Depth (based on grid y)
         
         this.mesh.position.set(worldX, worldY, worldZ);
         
