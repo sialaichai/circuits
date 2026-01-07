@@ -15,12 +15,25 @@ class Player {
         this.createPlayerMesh();
         // CORRECT: Maps x->x, z->y (height), y->z
         // startPos.z comes from levels.js as the 'layer' (0, 1, 2 etc), so we use it for height
-        // CORRECT COORDINATE MAPPING
+       // Grid X -> World X
+        // Grid Z -> World Y (Height/Floor) -> 0 for level 1
+        // Grid Y -> World Z (Depth)
         const worldX = startPos.x;
-        const worldY = (startPos.z * 2) + 2; // Height (based on layer z)
-        const worldZ = startPos.y;           // Depth (based on grid y)
+        const worldZ = startPos.y; // 'y' in level data is depth
+        const worldY = 2;          // Force spawn at height 2 to drop onto floor
         
+        // Set Mesh Position
         this.mesh.position.set(worldX, worldY, worldZ);
+        
+        // Set Physics Body Position
+        this.body = new CANNON.Body({
+            mass: 1,
+            // Match mesh position
+            position: new CANNON.Vec3(worldX, worldY, worldZ), 
+            shape: new CANNON.Sphere(0.4),
+            linearDamping: 0.3,
+            angularDamping: 0.3
+        });
         
         // Create physics body
         this.createPhysicsBody();
