@@ -36,6 +36,38 @@ class Game {
         
         this.init();
     }
+        showLoadError(message) {
+        const errorDiv = document.createElement('div');
+        errorDiv.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 0, 0, 0.9);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            z-index: 10000;
+            text-align: center;
+            max-width: 500px;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+        `;
+        errorDiv.innerHTML = `
+            <h2>⚠️ Loading Error</h2>
+            <p>${message}</p>
+            <p style="font-size: 14px; margin-top: 20px;">
+                <strong>Debug Info:</strong><br>
+                THREE: ${typeof THREE}<br>
+                CANNON: ${typeof CANNON}<br>
+                Howler: ${typeof Howler}
+            </p>
+            <button onclick="window.location.reload()" 
+                    style="margin-top: 20px; padding: 10px 20px; background: white; color: red; border: none; border-radius: 5px; cursor: pointer;">
+                ↻ Refresh Page
+            </button>
+        `;
+        document.body.appendChild(errorDiv);
+    }
 
     init() {
         // Initialize Three.js
