@@ -175,20 +175,21 @@
     <!-- Option 3: Cloudflare (most reliable) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
-    
-
-    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>   
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
-    <!-- 2. Three.js -->
-   
+      
     <!-- 3. Howler.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
+
+     
+    <!-- Your Game Classes -->
     <script src="js/questions.js"></script>
-    <script src="js/levels.js"></script>
-    <script src="js/player.js"></script>
-    <script src="js/game.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="js/main.js"></script>
+    <script src="player.js"></script>
+    <script src="levels.js"></script>
+    <script src="ui.js"></script>
+    <script src="game.js"></script>  <!-- Game class must come before main.js -->
+    <script src="main.js"></script>   <!-- Main.js uses the Game class -->
+    
+
 </body>
 </html>
