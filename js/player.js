@@ -1,9 +1,8 @@
-// player.js - Updated version
 class Player {
     constructor(game, startPos) {
         this.game = game;
-        this.speed = 5;
-        this.jumpStrength = 8;
+        this.speed = 8; // Increased for better movement
+        this.jumpStrength = 12;
         this.canJump = true;
         
         // Movement flags
@@ -25,63 +24,57 @@ class Player {
     }
     
     createPlayerMesh() {
-        // Create body using CylinderGeometry instead of CapsuleGeometry
-        const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1.2, 8);
+        // Create a simple player using basic geometries
+        const group = new THREE.Group();
+        
+        // Body (cylinder)
+        const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1, 8);
         const bodyMaterial = new THREE.MeshPhongMaterial({ 
             color: 0x00aaff,
-            shininess: 30
-        });
-        
-        this.mesh = new THREE.Mesh(bodyGeometry, bodyMaterial);
-        this.mesh.castShadow = true;
-        this.mesh.receiveShadow = true;
-        
-        // Create head (sphere)
-        const headGeometry = new THREE.SphereGeometry(0.35, 8, 8);
-        const headMaterial = new THREE.MeshPhongMaterial({ 
-            color: 0x00aaff 
-        });
-        const head = new THREE.Mesh(headGeometry, headMaterial);
-        head.position.y = 0.7;
-        this.mesh.add(head);
-        
-        // Add circuit-like details
-        const wireGeometry = new THREE.TorusGeometry(0.4, 0.05, 4, 16);
-        const wireMaterial = new THREE.MeshPhongMaterial({ 
-            color: 0xffff00,
-            emissive: 0xffff00,
+            shininess: 20,
+            emissive: 0x004488,
             emissiveIntensity: 0.3
         });
+        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+        body.castShadow = true;
+        body.receiveShadow = true;
+        group.add(body);
         
-        const wire = new THREE.Mesh(wireGeometry, wireMaterial);
-        wire.position.y = 0.2;
-        this.mesh.add(wire);
+        // Head (sphere)
+        const headGeometry = new THREE.SphereGeometry(0.35, 8, 8);
+        const headMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x0088ff 
+        });
+        const head = new THREE.Mesh(headGeometry, headMaterial);
+        head.position.y = 0.6;
+        head.castShadow = true;
+        group.add(head);
         
-        // Add glowing core
-        const coreGeometry = new THREE.SphereGeometry(0.15, 8, 8);
+        // Circuit ring
+        const ringGeometry = new THREE.TorusGeometry(0.4, 0.05, 4, 16);
+        const ringMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0xffff00,
+            emissive: 0xffff00,
+            emissiveIntensity: 0.5
+        });
+        const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+        ring.position.y = 0.1;
+        group.add(ring);
+        
+        // Energy core
+        const coreGeometry = new THREE.SphereGeometry(0.15, 6, 6);
         const coreMaterial = new THREE.MeshPhongMaterial({ 
             color: 0x00ffff,
             emissive: 0x00ffff,
             emissiveIntensity: 0.8
         });
-        
         const core = new THREE.Mesh(coreGeometry, coreMaterial);
-        core.position.y = 0.5;
-        this.mesh.add(core);
+        core.position.y = 0.4;
+        group.add(core);
         
-        // Add arms
-        const armGeometry = new THREE.CylinderGeometry(0.08, 0.08, 0.6, 6);
-        const armMaterial = new THREE.MeshPhongMaterial({ color: 0x00aaff });
-        
-        const leftArm = new THREE.Mesh(armGeometry, armMaterial);
-        leftArm.position.set(-0.4, 0.3, 0);
-        leftArm.rotation.z = Math.PI / 4;
-        this.mesh.add(leftArm);
-        
-        const rightArm = new THREE.Mesh(armGeometry, armMaterial);
-        rightArm.position.set(0.4, 0.3, 0);
-        rightArm.rotation.z = -Math.PI / 4;
-        this.mesh.add(rightArm);
+        this.mesh = group;
+        this.mesh.castShadow = true;
+        this.mesh.receiveShadow = true;
     }
     
     createPhysicsBody() {
@@ -89,29 +82,18 @@ class Player {
             mass: 5,
             position: new CANNON.Vec3(0, 2, 0),
             shape: new CANNON.Sphere(0.5),
-            linearDamping: 0.9,
-            angularDamping: 0.9
+            linearDamping: 0.5, // Reduced for more responsive movement
+            angularDamping: 0.5
         });
         
-        // Add ground contact material
-        this.body.material = new CANNON.Material('playerMaterial');
-        const groundMaterial = new CANNON.Material('groundMaterial');
+        // Set fixed rotation to prevent tipping
+        this.body.fixedRotation = true;
+        this.body.updateMassProperties();
         
-        const contactMaterial = new CANNON.ContactMaterial(
-            this.body.material,
-            groundMaterial,
-            {
-                friction: 0.5,
-                restitution: 0.3
-            }
-        );
-        this.game.world.addContactMaterial(contactMaterial);
-        
-        // Listen for collisions to detect ground contact
+        // Listen for ground collisions
         this.body.addEventListener('collide', (event) => {
             const contact = event.contact;
-            
-            // Check if collision is with ground
+            // Check if collision is with something below (ground)
             if (contact.ni.y > 0.5) {
                 this.canJump = true;
             }
@@ -119,48 +101,49 @@ class Player {
     }
     
     update(deltaTime) {
-        // Update velocity based on input
-        const velocity = new CANNON.Vec3(0, 0, 0);
+        // Simple movement system
+        const moveForce = 50;
         
-        if (this.moveForward) velocity.z -= this.speed;
-        if (this.moveBackward) velocity.z += this.speed;
-        if (this.moveLeft) velocity.x -= this.speed;
-        if (this.moveRight) velocity.x += this.speed;
+        // Reset horizontal forces
+        this.body.force.x = 0;
+        this.body.force.z = 0;
         
-        // Apply movement
-        if (velocity.length() > 0) {
-            velocity.normalize();
-            velocity.scale(this.speed, velocity);
-            
-            // Convert to local space
-            const quat = this.body.quaternion;
-            const forward = new CANNON.Vec3(0, 0, -1);
-            const right = new CANNON.Vec3(1, 0, 0);
-            
-            forward.vmult(velocity.z, forward);
-            right.vmult(velocity.x, right);
-            
-            velocity.x = forward.x + right.x;
-            velocity.z = forward.z + right.z;
-            
-            this.body.velocity.x = velocity.x;
-            this.body.velocity.z = velocity.z;
-        } else {
-            // Apply damping when no input
-            this.body.velocity.x *= 0.9;
-            this.body.velocity.z *= 0.9;
+        // Apply movement forces
+        if (this.moveForward) {
+            this.body.force.z -= moveForce;
+        }
+        if (this.moveBackward) {
+            this.body.force.z += moveForce;
+        }
+        if (this.moveLeft) {
+            this.body.force.x -= moveForce;
+        }
+        if (this.moveRight) {
+            this.body.force.x += moveForce;
+        }
+        
+        // Limit horizontal velocity
+        const maxSpeed = this.speed * 2;
+        const vel = this.body.velocity;
+        const horizontalSpeed = Math.sqrt(vel.x * vel.x + vel.z * vel.z);
+        
+        if (horizontalSpeed > maxSpeed) {
+            const scale = maxSpeed / horizontalSpeed;
+            vel.x *= scale;
+            vel.z *= scale;
+            this.body.velocity = vel;
         }
         
         // Sync Three.js mesh with Cannon.js body
         this.mesh.position.copy(this.body.position);
         this.mesh.quaternion.copy(this.body.quaternion);
         
-        // Add bobbing animation when moving
-        if (velocity.length() > 0 && this.canJump) {
-            const bobAmount = Math.sin(Date.now() * 0.01) * 0.05;
+        // Bobbing animation
+        if (this.canJump && (this.moveForward || this.moveBackward || this.moveLeft || this.moveRight)) {
+            const bob = Math.sin(Date.now() * 0.01) * 0.05;
             this.mesh.children.forEach(child => {
-                if (child !== this.mesh) {
-                    child.position.y += bobAmount * 0.5;
+                if (child.type === 'Mesh') {
+                    child.position.y += bob * 0.3;
                 }
             });
         }
@@ -168,80 +151,82 @@ class Player {
     
     jump() {
         if (this.canJump) {
+            // Apply jump impulse
             this.body.velocity.y = this.jumpStrength;
             this.canJump = false;
             
-            // Add jump effect
-            const jumpEffect = new THREE.PointLight(0x00ffff, 1, 2);
-            jumpEffect.position.copy(this.mesh.position);
-            this.game.scene.add(jumpEffect);
+            // Jump effect
+            const light = new THREE.PointLight(0x00ffff, 2, 3);
+            light.position.copy(this.mesh.position);
+            this.game.scene.add(light);
             
+            // Remove light after delay
             setTimeout(() => {
-                this.game.scene.remove(jumpEffect);
+                if (this.game && this.game.scene) {
+                    this.game.scene.remove(light);
+                }
             }, 300);
+            
+            // Play sound if available
+            if (window.audioManager) {
+                window.audioManager.play('jump');
+            }
         }
     }
     
     dig() {
-        // Create digging effect
-        const digEffect = new THREE.PointLight(0xff9900, 2, 3);
-        digEffect.position.copy(this.mesh.position);
-        digEffect.position.y -= 0.5;
-        this.game.scene.add(digEffect);
+        // Digging effect
+        const light = new THREE.PointLight(0xff9900, 3, 4);
+        light.position.copy(this.mesh.position);
+        light.position.y -= 0.3;
+        this.game.scene.add(light);
         
-        // Create hole geometry
-        const holeGeometry = new THREE.CylinderGeometry(0.5, 0.5, 0.2, 8);
+        // Create temporary hole
+        const holeGeometry = new THREE.CylinderGeometry(0.6, 0.6, 0.2, 8);
         const holeMaterial = new THREE.MeshPhongMaterial({ 
-            color: 0x333333,
+            color: 0x222222,
             transparent: true,
-            opacity: 0.8
+            opacity: 0.7
         });
-        
         const hole = new THREE.Mesh(holeGeometry, holeMaterial);
         hole.position.copy(this.mesh.position);
-        hole.position.y = -0.4;
+        hole.position.y = -0.1;
         this.game.scene.add(hole);
         
-        // Add physics body for hole (as trigger)
-        const holeBody = new CANNON.Body({
-            mass: 0,
-            isTrigger: true,
-            position: new CANNON.Vec3(
-                this.mesh.position.x,
-                -0.4,
-                this.mesh.position.z
-            )
-        });
-        holeBody.addShape(new CANNON.Cylinder(0.5, 0.5, 0.2, 8));
-        holeBody.userData = { type: 'hole', timer: 300 }; // 5 seconds
-        this.game.world.addBody(holeBody);
-        
-        // Remove hole after delay
+        // Remove after delay
         setTimeout(() => {
-            this.game.scene.remove(hole);
-            this.game.world.removeBody(holeBody);
-        }, 5000);
-        
-        // Remove light effect
-        setTimeout(() => {
-            this.game.scene.remove(digEffect);
-        }, 500);
+            if (this.game && this.game.scene) {
+                this.game.scene.remove(light);
+                this.game.scene.remove(hole);
+            }
+        }, 2000);
     }
     
     collectItem(item) {
-        this.game.score += item.userData.value;
-        item.userData.collected = true;
-        this.game.scene.remove(item);
+        if (!item || !item.userData) return;
         
-        // Add collection effect
-        const collectEffect = new THREE.PointLight(0xffff00, 3, 5);
-        collectEffect.position.copy(this.mesh.position);
-        this.game.scene.add(collectEffect);
+        // Add score
+        this.game.score += item.userData.value || 100;
+        
+        // Remove item from scene
+        if (item.parent) {
+            item.parent.remove(item);
+        }
+        
+        // Collection effect
+        const light = new THREE.PointLight(0xffff00, 4, 5);
+        light.position.copy(this.mesh.position);
+        this.game.scene.add(light);
         
         setTimeout(() => {
-            this.game.scene.remove(collectEffect);
-        }, 300);
+            if (this.game && this.game.scene) {
+                this.game.scene.remove(light);
+            }
+        }, 500);
         
-        this.game.updateHUD();
+        // Update HUD
+        if (this.game.updateHUD) {
+            this.game.updateHUD();
+        }
     }
 }
