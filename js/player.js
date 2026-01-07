@@ -13,7 +13,13 @@ class Player {
         
         // Create player mesh
         this.createPlayerMesh();
-        this.mesh.position.set(startPos.x, startPos.y + 1, startPos.z);
+        // CORRECT: Maps x->x, z->y (height), y->z
+        // startPos.z comes from levels.js as the 'layer' (0, 1, 2 etc), so we use it for height
+        this.mesh.position.set(
+            startPos.x, 
+            (startPos.z * 2) + 1,  // World Y (Height): Layer * height + player offset
+            startPos.y             // World Z: Mapped from Grid Y
+        );
         
         // Create physics body
         this.createPhysicsBody();
@@ -88,7 +94,13 @@ class Player {
     
     // Allow some rotation for visual effect
     this.body.fixedRotation = false;
-    
+        
+        // Ensure the physics body gets the corrected coordinates
+    this.body.position.set(
+        this.mesh.position.x,
+        this.mesh.position.y, 
+        this.mesh.position.z
+    );
     // Listen for ground collisions
     this.body.addEventListener('collide', (event) => {
         const contact = event.contact;
