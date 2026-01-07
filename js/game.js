@@ -212,52 +212,54 @@ class Game {
     }
 
 loadLevel(level) {
-    console.log('Loading level', level);
+    console.log('🚀 Loading level', level);
     
-    // Clear existing scene
-    while(this.scene.children.length > 0){ 
+    // Clear scene but keep camera
+    while(this.scene.children.length > 0) { 
         const child = this.scene.children[0];
-        if (child !== this.camera && child !== this.testCube) { // Keep camera and test cube
-            this.scene.remove(child); 
+        if (child !== this.camera) {
+            this.scene.remove(child);
         }
     }
     
-    // Reset physics world if it exists
+    // Reset physics
     if (this.world) {
         this.world = new CANNON.World();
         this.world.gravity.set(0, -9.82, 0);
     }
     
-    // Re-add lighting
-    this.setupLighting();
-    
     // Get level data
     const levelData = this.levelManager.getCurrentLevel();
-    console.log('Level data:', levelData);
+    console.log('📐 Maze dimensions:', levelData.maze.length, 'x', levelData.maze[0].length);
     
-    // Create maze
+    // Create maze FIRST
     this.createMaze(levelData.maze);
     
-    // Create player at START position (not inside walls!)
+    // CREATE PLAYER
     this.player = new Player(this, levelData.startPos);
+    console.log('👤 Player created at:', levelData.startPos);
     
-    // Position camera ABOVE and BEHIND player
-    const startPos = levelData.startPos;
+    // 🔴🔴🔴 FIX: POSITION CAMERA PROPERLY 🔴🔴🔴
+    // Position camera HIGH ABOVE looking DOWN at the maze
+    const mazeWidth = levelData.maze.length;
+    const mazeHeight = levelData.maze[0].length;
+    
+    // Calculate center of maze
+    const centerX = mazeWidth / 2 - 0.5;
+    const centerZ = mazeHeight / 2 - 0.5;
+    
+    // Set camera HIGH above maze
     this.camera.position.set(
-        startPos.x - 5,  // 5 units to the left
-        startPos.y + 10, // 10 units above
-        startPos.z + 5   // 5 units behind
+        centerX,           // Center X
+        mazeHeight * 1.5,  // HIGH above (1.5x maze height)
+        centerZ + 10       // Behind center
     );
     
-    // Make camera look at player start position
-    this.camera.lookAt(
-        startPos.x,
-        startPos.y + 1,  // Look at player's height
-        startPos.z
-    );
+    // Look at center of maze (not at player!)
+    this.camera.lookAt(centerX, 0, centerZ);
     
-    console.log('Camera positioned at:', this.camera.position);
-    console.log('Camera looking at:', startPos);
+    console.log('📷 Camera positioned at:', this.camera.position);
+    console.log('📷 Camera looking at:', centerX, 0, centerZ);
     
     // Create other level elements
     this.createQuestionGates(levelData.questionPositions);
@@ -265,14 +267,57 @@ loadLevel(level) {
     this.createCollectibles(levelData.collectibles);
     this.createExit(levelData.exitPos);
     
-    // Add a test object to verify visibility
-    this.addTestMarker(startPos);
+    // 🔴 ADD DEBUG OBJECTS TO SEE WHAT'S HAPPENING
+    this.addDebugVisualizations(levelData);
     
     // Update UI
     this.ui.updateLevelDisplay(level, levelData.name);
     
-    // Force render
+    // Force immediate render
     this.renderer.render(this.scene, this.camera);
+}
+
+// ADD THIS METHOD for debugging
+addDebugVisualizations(levelData) {
+    console.log('🔍 Adding debug visualizations...');
+    
+    // 1. Add grid to see maze layout
+    const gridSize = Math.max(levelData.maze.length, levelData.maze[0].length);
+    const gridHelper = new THREE.GridHelper(gridSize * 2, gridSize * 2, 0x00ff00, 0x333333);
+    gridHelper.position.y = -0.5;
+    this.scene.add(gridHelper);
+    console.log('✅ Added grid helper');
+    
+    // 2. Add axes at origin
+    const axesHelper = new THREE.AxesHelper(5);
+    axesHelper.position.set(0, 0, 0);
+    this.scene.add(axesHelper);
+    console.log('✅ Added axes helper at origin');
+    
+    // 3. Add marker at player start
+    const markerGeometry = new THREE.SphereGeometry(0.3, 8, 8);
+    const markerMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+    const startMarker = new THREE.Mesh(markerGeometry, markerMaterial);
+    startMarker.position.copy(levelData.startPos);
+    startMarker.position.y += 1;
+    this.scene.add(startMarker);
+    console.log('✅ Added yellow marker at player start:', levelData.startPos);
+    
+    // 4. Add marker at exit
+    const exitMarker = new THREE.Mesh(markerGeometry, markerMaterial);
+    exitMarker.material.color.setHex(0xff0000);
+    exitMarker.position.copy(levelData.exitPos);
+    exitMarker.position.y += 1;
+    this.scene.add(exitMarker);
+    console.log('✅ Added red marker at exit:', levelData.exitPos);
+    
+    // 5. Add a BIG RED CUBE at world center to orient yourself
+    const centerCubeGeometry = new THREE.BoxGeometry(2, 2, 2);
+    const centerCubeMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const centerCube = new THREE.Mesh(centerCubeGeometry, centerCubeMaterial);
+    centerCube.position.set(0, 5, 0);
+    this.scene.add(centerCube);
+    console.log('✅ Added big red cube at world center (0,5,0)');
 }
 
 // Add this helper method
