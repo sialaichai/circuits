@@ -344,78 +344,81 @@ addTestMarker(position) {
 }
 
 createMaze(maze) {
-    console.log('🏗️ Creating maze with', maze.length, 'x', maze[0].length, 'cells');
+    console.log('🔨 Creating maze...');
     
-    // Use BRIGHTER materials
+    const wallGeometry = new THREE.BoxGeometry(1, 2, 1);
     const wallMaterial = new THREE.MeshPhongMaterial({ 
-        color: 0x4a4a8a,        // Brighter blue
-        emissive: 0x2a2a6a,     // Brighter emission
-        emissiveIntensity: 0.4, // Increased
-        shininess: 30
+        color: 0x4a4a8a,
+        emissive: 0x2a2a6a,
+        emissiveIntensity: 0.5
     });
     
+    const floorGeometry = new THREE.BoxGeometry(1, 0.1, 1);
     const floorMaterial = new THREE.MeshPhongMaterial({ 
-        color: 0x3a3a7a,        // Brighter
+        color: 0x3a3a7a,
         emissive: 0x2a2a5a,
         emissiveIntensity: 0.3
     });
     
-    let wallCount = 0;
-    let floorCount = 0;
+    // Store maze objects for debugging
+    this.mazeWalls = [];
+    this.mazeFloors = [];
     
     for (let x = 0; x < maze.length; x++) {
         for (let y = 0; y < maze[x].length; y++) {
             const cell = maze[x][y];
             
             if (cell.type === 'wall') {
-                // Create visible wall
-                const wallGeometry = new THREE.BoxGeometry(1, 2, 1);
+                // 🔴 FIX: Wall should be positioned with its BOTTOM at y=0
                 const wall = new THREE.Mesh(wallGeometry, wallMaterial);
-                
-                // Position wall CORRECTLY (center at y=1 for height 2)
-                wall.position.set(x, 1, y);
+                wall.position.set(x, 1, y); // Center at y=1 means height from 0 to 2
                 wall.castShadow = true;
                 wall.receiveShadow = true;
-                
                 this.scene.add(wall);
-                wallCount++;
+                this.mazeWalls.push(wall);
                 
-                // Add wireframe for better visibility
-                const wireframe = new THREE.WireframeGeometry(wallGeometry);
-                const line = new THREE.LineSegments(wireframe);
-                line.position.set(x, 1, y);
-                line.material.color.setHex(0x00ffff);
-                this.scene.add(line);
+                // Add physics body at SAME position
+                if (this.world) {
+                    const wallBody = new CANNON.Body({
+                        mass: 0,
+                        position: new CANNON.Vec3(x, 1, y) // Same Y position!
+                    });
+                    const wallShape = new CANNON.Box(new CANNON.Vec3(0.5, 1, 0.5));
+                    wallBody.addShape(wallShape);
+                    this.world.addBody(wallBody);
+                }
                 
             } else {
-                // Create floor
-                const floorGeometry = new THREE.BoxGeometry(1, 0.1, 1);
+                // Floor should be BELOW everything
                 const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-                floor.position.set(x, -0.45, y);
+                floor.position.set(x, -0.5, y); // Slightly below ground level
                 floor.receiveShadow = true;
                 this.scene.add(floor);
-                floorCount++;
+                this.mazeFloors.push(floor);
             }
         }
     }
     
-    console.log(`✅ Created ${wallCount} walls and ${floorCount} floor tiles`);
+    console.log(`✅ Created ${this.mazeWalls.length} walls and ${this.mazeFloors.length} floors`);
     
-    // ADD A LARGE GROUND PLANE UNDER EVERYTHING
-    const groundSize = Math.max(maze.length, maze[0].length) * 2;
+    // 🔴 ADD LARGE GROUND PLANE AT y=0
+    const groundSize = Math.max(maze.length, maze[0].length) + 10;
     const groundGeometry = new THREE.PlaneGeometry(groundSize, groundSize);
     const groundMaterial = new THREE.MeshPhongMaterial({ 
         color: 0x2a2a5a,
-        side: THREE.DoubleSide,
-        emissive: 0x1a1a3a,
-        emissiveIntensity: 0.2
+        side: THREE.DoubleSide
     });
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
     ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -1;
+    ground.position.y = 0; // Ground at y=0
     this.scene.add(ground);
     
-    console.log('✅ Added large ground plane');
+    // Add grid for reference
+    const gridHelper = new THREE.GridHelper(groundSize, groundSize/2, 0x00ff00, 0x333333);
+    gridHelper.position.y = 0.01; // Slightly above ground
+    this.scene.add(gridHelper);
+    
+    console.log('✅ Added ground plane and grid at y=0');
 }
 
     createQuestionGates(positions) {
