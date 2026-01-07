@@ -142,6 +142,7 @@ window.utils = {
 };
 
 // main.js - Wait for everything to load
+// main.js - Wait for everything to load
 window.addEventListener('DOMContentLoaded', () => {
     console.log('DOM loaded, checking dependencies...');
     
@@ -165,6 +166,24 @@ window.addEventListener('DOMContentLoaded', () => {
         }
         
         console.log('All dependencies loaded, starting game...');
+        
+        // Check if Game class is defined
+        if (typeof Game === 'undefined') {
+            console.error('Game class not defined! Scripts may be loading out of order.');
+            console.log('Make sure game.js loads before main.js');
+            
+            // Try to load the game anyway
+            setTimeout(() => {
+                if (typeof Game !== 'undefined') {
+                    window.game = new Game();
+                } else {
+                    alert('Game failed to load. Please refresh the page.');
+                }
+            }, 1000);
+            return;
+        }
+        
+        // All good, start the game
         window.game = new Game();
     }, 100);
 });
