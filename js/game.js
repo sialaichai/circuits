@@ -225,7 +225,7 @@ loadLevel(level) {
     // Reset physics
     if (this.world) {
         this.world = new CANNON.World();
-        this.world.gravity.set(0, -9.82, 0);
+        this.world.gravity.set(0, -20, 0); // Increased gravity for better jumping
     }
     
     // Get level data
@@ -239,27 +239,25 @@ loadLevel(level) {
     this.player = new Player(this, levelData.startPos);
     console.log('👤 Player created at:', levelData.startPos);
     
-    // 🔴🔴🔴 FIX: POSITION CAMERA PROPERLY 🔴🔴🔴
-    // Position camera HIGH ABOVE looking DOWN at the maze
-    const mazeWidth = levelData.maze.length;
-    const mazeHeight = levelData.maze[0].length;
+    // 🔴 FIX: Position camera BEHIND and ABOVE player for third-person view
+    const mazeSize = Math.max(levelData.maze.length, levelData.maze[0].length);
     
-    // Calculate center of maze
-    const centerX = mazeWidth / 2 - 0.5;
-    const centerZ = mazeHeight / 2 - 0.5;
-    
-    // Set camera HIGH above maze
+    // Position camera behind player (third-person view)
     this.camera.position.set(
-        centerX,           // Center X
-        mazeHeight * 1.5,  // HIGH above (1.5x maze height)
-        centerZ + 10       // Behind center
+        levelData.startPos.x - 5,  // Behind player
+        levelData.startPos.y + 8,  // Above player
+        levelData.startPos.z + 5   // To the side
     );
     
-    // Look at center of maze (not at player!)
-    this.camera.lookAt(centerX, 0, centerZ);
+    // Look at player
+    this.camera.lookAt(
+        levelData.startPos.x,
+        levelData.startPos.y + 1,  // Look at player's body, not feet
+        levelData.startPos.z
+    );
     
     console.log('📷 Camera positioned at:', this.camera.position);
-    console.log('📷 Camera looking at:', centerX, 0, centerZ);
+    console.log('📷 Camera looking at player start position');
     
     // Create other level elements
     this.createQuestionGates(levelData.questionPositions);
@@ -267,8 +265,8 @@ loadLevel(level) {
     this.createCollectibles(levelData.collectibles);
     this.createExit(levelData.exitPos);
     
-    // 🔴 ADD DEBUG OBJECTS TO SEE WHAT'S HAPPENING
-    this.addDebugVisualizations(levelData);
+    // 🔴 REMOVE or COMMENT OUT debug objects (they're cluttering the view)
+    // this.addDebugVisualizations(levelData);
     
     // Update UI
     this.ui.updateLevelDisplay(level, levelData.name);
@@ -346,81 +344,85 @@ addTestMarker(position) {
 createMaze(maze) {
     console.log('🔨 Creating maze...');
     
-    const wallGeometry = new THREE.BoxGeometry(1, 2, 1);
+    // Wall material
     const wallMaterial = new THREE.MeshPhongMaterial({ 
         color: 0x4a4a8a,
         emissive: 0x2a2a6a,
         emissiveIntensity: 0.5
     });
     
-    const floorGeometry = new THREE.BoxGeometry(1, 0.1, 1);
+    // Floor material
     const floorMaterial = new THREE.MeshPhongMaterial({ 
         color: 0x3a3a7a,
-        emissive: 0x2a2a5a,
-        emissiveIntensity: 0.3
+        emissive: 0x1a1a5a,
+        emissiveIntensity: 0.3,
+        side: THREE.DoubleSide
     });
     
-    // Store maze objects for debugging
     this.mazeWalls = [];
-    this.mazeFloors = [];
     
+    // Create ground plane FIRST (at y=0)
+    const groundSize = Math.max(maze.length, maze[0].length);
+    const groundGeometry = new THREE.PlaneGeometry(groundSize * 2, groundSize * 2);
+    const ground = new THREE.Mesh(groundGeometry, floorMaterial);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.5; // Slightly below everything
+    ground.receiveShadow = true;
+    this.scene.add(ground);
+    
+    console.log('✅ Created ground plane at y=-0.5');
+    
+    // Create walls and path cells
     for (let x = 0; x < maze.length; x++) {
         for (let y = 0; y < maze[x].length; y++) {
             const cell = maze[x][y];
             
             if (cell.type === 'wall') {
-                // 🔴 FIX: Wall should be positioned with its BOTTOM at y=0
+                // Create taller walls (height: 3 units)
+                const wallGeometry = new THREE.BoxGeometry(1, 3, 1);
                 const wall = new THREE.Mesh(wallGeometry, wallMaterial);
-                wall.position.set(x, 1, y); // Center at y=1 means height from 0 to 2
+                wall.position.set(x, 1.5, y); // Center at y=1.5 means wall from 0 to 3
                 wall.castShadow = true;
                 wall.receiveShadow = true;
                 this.scene.add(wall);
                 this.mazeWalls.push(wall);
                 
-                // Add physics body at SAME position
+                // Add physics
                 if (this.world) {
                     const wallBody = new CANNON.Body({
                         mass: 0,
-                        position: new CANNON.Vec3(x, 1, y) // Same Y position!
+                        position: new CANNON.Vec3(x, 1.5, y)
                     });
-                    const wallShape = new CANNON.Box(new CANNON.Vec3(0.5, 1, 0.5));
+                    const wallShape = new CANNON.Box(new CANNON.Vec3(0.5, 1.5, 0.5));
                     wallBody.addShape(wallShape);
                     this.world.addBody(wallBody);
                 }
                 
             } else {
-                // Floor should be BELOW everything
-                const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-                floor.position.set(x, -0.5, y); // Slightly below ground level
-                floor.receiveShadow = true;
-                this.scene.add(floor);
-                this.mazeFloors.push(floor);
+                // Create path floor tiles
+                const pathGeometry = new THREE.BoxGeometry(0.95, 0.1, 0.95);
+                const pathMaterial = new THREE.MeshPhongMaterial({ 
+                    color: 0x2a2a6a,
+                    emissive: 0x1a1a4a,
+                    emissiveIntensity: 0.2
+                });
+                const path = new THREE.Mesh(pathGeometry, pathMaterial);
+                path.position.set(x, 0, y);
+                path.receiveShadow = true;
+                this.scene.add(path);
             }
         }
     }
     
-    console.log(`✅ Created ${this.mazeWalls.length} walls and ${this.mazeFloors.length} floors`);
+    console.log(`✅ Created ${this.mazeWalls.length} walls`);
     
-    // 🔴 ADD LARGE GROUND PLANE AT y=0
-    const groundSize = Math.max(maze.length, maze[0].length) + 10;
-    const groundGeometry = new THREE.PlaneGeometry(groundSize, groundSize);
-    const groundMaterial = new THREE.MeshPhongMaterial({ 
-        color: 0x2a2a5a,
-        side: THREE.DoubleSide
-    });
-    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-    ground.rotation.x = -Math.PI / 2;
-    ground.position.y = 0; // Ground at y=0
-    this.scene.add(ground);
-    
-    // Add grid for reference
-    const gridHelper = new THREE.GridHelper(groundSize, groundSize/2, 0x00ff00, 0x333333);
+    // Add grid helper for reference (optional)
+    const gridHelper = new THREE.GridHelper(groundSize * 2, groundSize, 0x00ff00, 0x333333);
     gridHelper.position.y = 0.01; // Slightly above ground
     this.scene.add(gridHelper);
-    
-    console.log('✅ Added ground plane and grid at y=0');
+    console.log('✅ Added grid helper');
 }
-
+    
     createQuestionGates(positions) {
         const gateGeometry = new THREE.BoxGeometry(0.8, 2, 0.1);
         
@@ -784,20 +786,55 @@ createMaze(maze) {
         this.renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
-    onKeyDown(event) {
-        if (!this.player) return;
-        
-        switch(event.key.toLowerCase()) {
-            case 'w': this.player.moveForward = true; break;
-            case 's': this.player.moveBackward = true; break;
-            case 'a': this.player.moveLeft = true; break;
-            case 'd': this.player.moveRight = true; break;
-            case ' ': this.player.jump(); break;
-            case 'e': this.player.dig(); break;
-            case 'r': this.checkQuestionGate(this.player.mesh.position); break;
-            case 'escape': this.togglePause(); break;
-        }
+onKeyDown(event) {
+    console.log('Key pressed:', event.key); // Debug logging
+    
+    if (!this.player) {
+        console.log('Player not initialized yet');
+        return;
     }
+    
+    // Prevent default for game keys
+    const gameKeys = ['w', 'a', 's', 'd', ' ', 'e', 'r', 'escape'];
+    if (gameKeys.includes(event.key.toLowerCase())) {
+        event.preventDefault();
+    }
+    
+    switch(event.key.toLowerCase()) {
+        case 'w': 
+            this.player.moveForward = true; 
+            console.log('Move forward');
+            break;
+        case 's': 
+            this.player.moveBackward = true; 
+            console.log('Move backward');
+            break;
+        case 'a': 
+            this.player.moveLeft = true; 
+            console.log('Move left');
+            break;
+        case 'd': 
+            this.player.moveRight = true; 
+            console.log('Move right');
+            break;
+        case ' ': 
+            console.log('Jump');
+            this.player.jump(); 
+            break;
+        case 'e': 
+            console.log('Dig');
+            this.player.dig(); 
+            break;
+        case 'r': 
+            console.log('Check question');
+            this.checkQuestionGate(this.player.mesh.position); 
+            break;
+        case 'escape': 
+            console.log('Toggle pause');
+            this.togglePause(); 
+            break;
+    }
+}
 
     onKeyUp(event) {
         if (!this.player) return;
@@ -826,23 +863,35 @@ animate() {
     if (this.player) {
         this.player.update(deltaTime);
         
-        // 🔴 FIX: Use TOP-DOWN camera (don't follow player too closely)
+        // 🔴 FIX: Third-person camera following player
         const playerPos = this.player.mesh.position;
-        const maze = this.levelManager.getCurrentLevel().maze;
-        const mazeHeight = maze ? maze[0].length : 20;
         
-        // Keep camera HIGH above player (top-down view)
+        // Calculate camera position: behind and above player
+        const cameraDistance = 8; // Distance behind player
+        const cameraHeight = 5;   // Height above player
+        
+        // Get player's forward direction
+        const playerForward = new THREE.Vector3(0, 0, -1);
+        playerForward.applyQuaternion(this.player.mesh.quaternion);
+        
+        // Target position: behind player
         const targetCameraPos = new THREE.Vector3(
-            playerPos.x,           // Same X as player
-            mazeHeight * 1.2,      // Keep HIGH above (1.2x maze height)
-            playerPos.z + 5        // Slightly behind
+            playerPos.x - playerForward.x * cameraDistance,
+            playerPos.y + cameraHeight,
+            playerPos.z - playerForward.z * cameraDistance
         );
         
         // Smooth camera movement
-        this.camera.position.lerp(targetCameraPos, 0.05);
+        this.camera.position.lerp(targetCameraPos, 0.1);
         
-        // Look DOWN at player (top-down view)
-        this.camera.lookAt(playerPos.x, 0, playerPos.z);
+        // Look at player (slightly above player's position)
+        const lookAtPos = new THREE.Vector3(
+            playerPos.x,
+            playerPos.y + 1,  // Look at player's body
+            playerPos.z
+        );
+        
+        this.camera.lookAt(lookAtPos);
     }
     
     // Update enemies if method exists
