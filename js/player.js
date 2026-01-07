@@ -78,28 +78,25 @@ class Player {
     }
     
     createPhysicsBody() {
-        this.body = new CANNON.Body({
-            mass: 5,
-            position: new CANNON.Vec3(0, 2, 0),
-            shape: new CANNON.Sphere(0.5),
-            linearDamping: 0.5, // Reduced for more responsive movement
-            angularDamping: 0.5
-        });
-        
-        // Set fixed rotation to prevent tipping
-        this.body.fixedRotation = true;
-        this.body.updateMassProperties();
-        
-        // Listen for ground collisions
-        this.body.addEventListener('collide', (event) => {
-            const contact = event.contact;
-            // Check if collision is with something below (ground)
-            if (contact.ni.y > 0.5) {
-                this.canJump = true;
-            }
-        });
-    }
+    this.body = new CANNON.Body({
+        mass: 1, // Reduced mass
+        position: new CANNON.Vec3(0, 3, 0), // Start higher
+        shape: new CANNON.Sphere(0.4), // Slightly larger
+        linearDamping: 0.3, // Less damping
+        angularDamping: 0.3
+    });
     
+    // Allow some rotation for visual effect
+    this.body.fixedRotation = false;
+    
+    // Listen for ground collisions
+    this.body.addEventListener('collide', (event) => {
+        const contact = event.contact;
+        if (contact.ni.y > 0.5) {
+            this.canJump = true;
+        }
+    });
+}
     update(deltaTime) {
         // Simple movement system
         const moveForce = 50;
