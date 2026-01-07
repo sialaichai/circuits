@@ -845,63 +845,33 @@ animate() {
         this.camera.lookAt(playerPos.x, 0, playerPos.z);
     }
     
-    // Render
-    this.renderer.render(this.scene, this.camera);
-}
-        
-        // Update enemies if method exists
-        if (this.updateEnemies && typeof this.updateEnemies === 'function') {
-            try {
-                this.updateEnemies(deltaTime);
-            } catch (e) {
-                console.error('Enemy update error:', e);
-            }
-        }
-        
-        // Update animations if mixers exist
-        if (this.mixers && this.mixers.length > 0) {
-            this.mixers.forEach(mixer => {
-                try {
-                    mixer.update(deltaTime);
-                } catch (e) {
-                    console.error('Mixer update error:', e);
-                }
-            });
-        }
-        
-        // Render the scene
+    // Update enemies if method exists
+    if (this.updateEnemies && typeof this.updateEnemies === 'function') {
         try {
-            this.renderer.render(this.scene, this.camera);
+            this.updateEnemies(deltaTime);
         } catch (e) {
-            console.error('Render error:', e);
+            console.error('Enemy update error:', e);
         }
     }
-
-    updateEnemies(deltaTime) {
-        const enemies = this.scene.children.filter(child => 
-            child.userData && child.userData.type === 'enemy'
-        );
-        
-        enemies.forEach(enemy => {
-            // Simple patrol pattern
-            enemy.position.x += enemy.userData.direction.x * enemy.userData.speed * deltaTime;
-            enemy.position.z += enemy.userData.direction.z * enemy.userData.speed * deltaTime;
-            
-            // Change direction occasionally
-            if (Math.random() < 0.01) {
-                enemy.userData.direction.set(
-                    Math.random() * 2 - 1,
-                    0,
-                    Math.random() * 2 - 1
-                ).normalize();
-            }
-            
-            // Check collision with player
-            if (this.player && enemy.position.distanceTo(this.player.mesh.position) < 1) {
-                this.playerHit();
+    
+    // Update animations if mixers exist
+    if (this.mixers && this.mixers.length > 0) {
+        this.mixers.forEach(mixer => {
+            try {
+                mixer.update(deltaTime);
+            } catch (e) {
+                console.error('Mixer update error:', e);
             }
         });
     }
+    
+    // Render the scene
+    try {
+        this.renderer.render(this.scene, this.camera);
+    } catch (e) {
+        console.error('Render error:', e);
+    }
+}
 
     checkExit(playerPosition) {
         const exits = this.scene.children.filter(child => 
