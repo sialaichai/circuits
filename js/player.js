@@ -15,11 +15,11 @@ class Player {
         this.createPlayerMesh();
         // CORRECT: Maps x->x, z->y (height), y->z
         // startPos.z comes from levels.js as the 'layer' (0, 1, 2 etc), so we use it for height
-        this.mesh.position.set(
-            startPos.x, 
-            (startPos.z * 2) + 1,  // World Y (Height): Layer * height + player offset
-            startPos.y             // World Z: Mapped from Grid Y
-        );
+        const worldX = startPos.x;
+        const worldY = (startPos.z * 2) + 2; // Lift slightly above floor
+        const worldZ = startPos.y;
+        
+        this.mesh.position.set(worldX, worldY, worldZ);
         
         // Create physics body
         this.createPhysicsBody();
@@ -86,7 +86,18 @@ class Player {
     createPhysicsBody() {
     this.body = new CANNON.Body({
         mass: 1, // Reduced mass
-        position: new CANNON.Vec3(0, 3, 0), // Start higher
+        // NEW: Use the mesh's position we calculated above
+        this.body = new CANNON.Body({
+            mass: 1,
+            position: new CANNON.Vec3(
+                this.mesh.position.x, 
+                this.mesh.position.y, 
+                this.mesh.position.z
+            ),
+            shape: new CANNON.Sphere(0.4),
+            // ... rest of your config
+        });
+      
         shape: new CANNON.Sphere(0.4), // Slightly larger
         linearDamping: 0.3, // Less damping
         angularDamping: 0.3
