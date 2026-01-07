@@ -405,96 +405,54 @@ addTestMarker(position) {
     console.log('Added yellow marker at start position');
 }
 
-createMaze(maze) {
-    console.log('🔨 Creating maze...');
-        // Create unique material instances for walls and floors
-    // This prevents shader program conflicts
-    
-    const wallMaterial = () => new THREE.MeshPhongMaterial({ 
-        color: 0x4a4a8a,
-        emissive: 0x2a2a6a,
-        emissiveIntensity: 0.5,
-        shininess: 30
-    });
-    
-    const floorMaterial = () => new THREE.MeshPhongMaterial({ 
-        color: 0x3a3a7a,
-        emissive: 0x1a1a5a,
-        emissiveIntensity: 0.3,
-        side: THREE.DoubleSide,
-        shininess: 20
-    });
-    
-    const pathMaterial = () => new THREE.MeshPhongMaterial({ 
-        color: 0x2a2a6a,
-        emissive: 0x1a1a4a,
-        emissiveIntensity: 0.2,
-        shininess: 10
-    });
- 
-    this.mazeWalls = [];
-    
-    // Create ground plane FIRST (at y=0)
-    const groundSize = Math.max(maze.length, maze[0].length);
-    const groundGeometry = new THREE.PlaneGeometry(groundSize * 2, groundSize * 2);
-    const ground = new THREE.Mesh(groundGeometry, floorMaterial);
-    ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -0.5; // Slightly below everything
-    ground.receiveShadow = true;
-    this.scene.add(ground);
-    
-    console.log('✅ Created ground plane at y=-0.5');
-    
-    // Create walls and path cells
+// Create walls and path cells
     for (let x = 0; x < maze.length; x++) {
-        for (let y = 0; y < maze[x].length; y++) {
-            const cell = maze[x][y];
+        for (let z = 0; z < maze[x].length; z++) { // Rename 'y' to 'z' for clarity
+            const cell = maze[x][z];
+            
+            // NOTE: We map grid (x, z) to World (x, z)
+            // World Y is height (up/down)
             
             if (cell.type === 'wall') {
-                // Create taller walls (height: 3 units)
-                const wallGeometry = new THREE.BoxGeometry(1, 3, 1);
+                // 1. Visual Wall
+                const wallH = 3; 
+                const wallGeometry = new THREE.BoxGeometry(1, wallH, 1);
                 const wall = new THREE.Mesh(wallGeometry, wallMaterial);
-                wall.position.set(x, 1.5, y); // Center at y=1.5 means wall from 0 to 3
+                
+                // Position: Center the wall vertically at height/2
+                wall.position.set(x, wallH / 2, z); 
+                
                 wall.castShadow = true;
                 wall.receiveShadow = true;
                 this.scene.add(wall);
                 this.mazeWalls.push(wall);
                 
-                // Add physics
+                // 2. Physics Wall (MUST MATCH VISUALS)
                 if (this.world) {
                     const wallBody = new CANNON.Body({
-                        mass: 0,
-                        position: new CANNON.Vec3(x, 1.5, y)
+                        mass: 0, // 0 mass = static (immovable)
+                        type: CANNON.Body.STATIC,
+                        position: new CANNON.Vec3(x, wallH / 2, z)
                     });
-                    const wallShape = new CANNON.Box(new CANNON.Vec3(0.5, 1.5, 0.5));
+                    
+                    // Cannon box shape uses half-extents (width/2, height/2, depth/2)
+                    const wallShape = new CANNON.Box(new CANNON.Vec3(0.5, wallH / 2, 0.5));
+                    
                     wallBody.addShape(wallShape);
                     this.world.addBody(wallBody);
                 }
                 
             } else {
-                // Create path floor tiles
+                // Path/Floor Tile
                 const pathGeometry = new THREE.BoxGeometry(0.95, 0.1, 0.95);
-                const pathMaterial = new THREE.MeshPhongMaterial({ 
-                    color: 0x2a2a6a,
-                    emissive: 0x1a1a4a,
-                    emissiveIntensity: 0.2
-                });
                 const path = new THREE.Mesh(pathGeometry, pathMaterial);
-                path.position.set(x, 0, y);
+                // Position slightly above 0 to avoid z-fighting with base ground
+                path.position.set(x, 0.05, z); 
                 path.receiveShadow = true;
                 this.scene.add(path);
             }
         }
     }
-    
-    console.log(`✅ Created ${this.mazeWalls.length} walls`);
-    
-    // Add grid helper for reference (optional)
-    const gridHelper = new THREE.GridHelper(groundSize * 2, groundSize, 0x00ff00, 0x333333);
-    gridHelper.position.y = 0.01; // Slightly above ground
-    this.scene.add(gridHelper);
-    console.log('✅ Added grid helper');
-}
     
     createQuestionGates(positions) {
         const gateGeometry = new THREE.BoxGeometry(0.8, 2, 0.1);
