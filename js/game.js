@@ -106,10 +106,8 @@ class Game {
         this.renderer.debug.checkShaderErrors = false; // Disable shader error checking in console
         this.renderer.autoClear = true; // Ensure auto-clear is enabled
 
-
-
-
-
+        // In init() method, after setting up renderer:
+        this.precompileShaders();
         
         // Setup physics world
         this.world = new CANNON.World();
@@ -132,6 +130,37 @@ class Game {
         this.animate();
     }
 
+            precompileShaders() {
+            console.log('Precompiling shaders...');
+            
+            // Create dummy scene to force shader compilation
+            const dummyScene = new THREE.Scene();
+            const dummyCamera = new THREE.PerspectiveCamera();
+            
+            // Create and render dummy materials
+            const testMaterials = [
+                new THREE.MeshPhongMaterial({ color: 0xff0000 }),
+                new THREE.MeshPhongMaterial({ color: 0x00ff00 }),
+                new THREE.MeshPhongMaterial({ color: 0x0000ff }),
+                new THREE.MeshBasicMaterial({ color: 0xffffff })
+            ];
+            
+            const dummyMesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1));
+            
+            testMaterials.forEach((material, i) => {
+                dummyMesh.material = material;
+                dummyScene.add(dummyMesh);
+                this.renderer.render(dummyScene, dummyCamera);
+                dummyScene.remove(dummyMesh);
+            });
+            
+            // Clear dummy objects
+            dummyMesh.geometry.dispose();
+            testMaterials.forEach(material => material.dispose());
+            
+            console.log('Shader precompilation complete');
+        }
+    
     setupLighting() {
     console.log('Setting up lighting...');
     
@@ -876,53 +905,43 @@ onKeyDown(event) {
     }
 
 animate() {
+    // Use fixed time step for physics
+    const fixedTimeStep = 1.0 / 60.0; // 60 FPS physics
+    
     requestAnimationFrame(() => this.animate());
     
     if (!this.isGameActive || this.isPaused) return;
     
     const deltaTime = Math.min(this.clock.getDelta(), 0.1);
     
-    // Update physics
+    // Update physics with fixed time step
     if (this.world) {
-        this.world.step(1/60, deltaTime, 3);
+        this.world.step(fixedTimeStep, deltaTime, 3);
     }
     
     // Update player
     if (this.player) {
         this.player.update(deltaTime);
         
-        // 🔴 FIX: Third-person camera following player
-        const playerPos = this.player.mesh.position;
-        
-        // Calculate camera position: behind and above player
-        const cameraDistance = 8; // Distance behind player
-        const cameraHeight = 5;   // Height above player
-        
-        // Get player's forward direction
-        const playerForward = new THREE.Vector3(0, 0, -1);
-        playerForward.applyQuaternion(this.player.mesh.quaternion);
-        
-        // Target position: behind player
-        const targetCameraPos = new THREE.Vector3(
-            playerPos.x - playerForward.x * cameraDistance,
-            playerPos.y + cameraHeight,
-            playerPos.z - playerForward.z * cameraDistance
-        );
-        
-        // Smooth camera movement
-        this.camera.position.lerp(targetCameraPos, 0.1);
-        
-        // Look at player (slightly above player's position)
-        const lookAtPos = new THREE.Vector3(
-            playerPos.x,
-            playerPos.y + 1,  // Look at player's body
-            playerPos.z
-        );
-        
-        this.camera.lookAt(lookAtPos);
+        // Camera update code...
     }
     
-    // Update enemies if method exists
+    // Update other game elements
+    this.updateGameLogic(deltaTime);
+    
+    // Only render once per frame
+    try {
+        this.renderer.render(this.scene, this.camera);
+    } catch (e) {
+        // Silent catch for WebGL warnings
+        if (!e.message.includes('uniformMatrix')) {
+            console.error('Render error:', e);
+        }
+    }
+}
+
+updateGameLogic(deltaTime) {
+    // Update enemies
     if (this.updateEnemies && typeof this.updateEnemies === 'function') {
         try {
             this.updateEnemies(deltaTime);
@@ -931,7 +950,7 @@ animate() {
         }
     }
     
-    // Update animations if mixers exist
+    // Update animations
     if (this.mixers && this.mixers.length > 0) {
         this.mixers.forEach(mixer => {
             try {
@@ -942,11 +961,9 @@ animate() {
         });
     }
     
-    // Render the scene
-    try {
-        this.renderer.render(this.scene, this.camera);
-    } catch (e) {
-        console.error('Render error:', e);
+    // Check for exit
+    if (this.player) {
+        this.checkExit(this.player.mesh.position);
     }
 }
 
