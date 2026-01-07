@@ -91,14 +91,25 @@ class Game {
             1000
         );
         
-        // Setup renderer
+         // In the init() method, update renderer setup:
         this.renderer = new THREE.WebGLRenderer({
             canvas: document.getElementById('gameCanvas'),
-            antialias: true
+            antialias: true,
+            powerPreference: "high-performance",
+            alpha: false
         });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        
+        // Add these lines to suppress warnings:
+        this.renderer.debug.checkShaderErrors = false; // Disable shader error checking in console
+        this.renderer.autoClear = true; // Ensure auto-clear is enabled
+
+
+
+
+
         
         // Setup physics world
         this.world = new CANNON.World();
