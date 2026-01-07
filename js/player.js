@@ -84,9 +84,7 @@ class Player {
     }
     
     createPhysicsBody() {
-    this.body = new CANNON.Body({
-        mass: 1, // Reduced mass
-        // NEW: Use the mesh's position we calculated above
+        // Create the physics body using the mesh's corrected position
         this.body = new CANNON.Body({
             mass: 1,
             position: new CANNON.Vec3(
@@ -95,29 +93,23 @@ class Player {
                 this.mesh.position.z
             ),
             shape: new CANNON.Sphere(0.4),
-            linearDamping: 0.3, // Less damping
-        angularDamping: 0.3
+            linearDamping: 0.3,
+            angularDamping: 0.3
         });
       
-      
-    
-    // Allow some rotation for visual effect
-    this.body.fixedRotation = false;
+        // Allow some rotation for visual effect
+        this.body.fixedRotation = false;
         
-        // Ensure the physics body gets the corrected coordinates
-    this.body.position.set(
-        this.mesh.position.x,
-        this.mesh.position.y, 
-        this.mesh.position.z
-    );
-    // Listen for ground collisions
-    this.body.addEventListener('collide', (event) => {
-        const contact = event.contact;
-        if (contact.ni.y > 0.5) {
-            this.canJump = true;
-        }
-    });
-}
+        // Listen for ground collisions to reset jump
+        this.body.addEventListener('collide', (event) => {
+            const contact = event.contact;
+            // Check if the collision normal points up (Y-axis is up)
+            if (contact.ni.y > 0.5) {
+                this.canJump = true;
+            }
+        });
+    }
+    
     update(deltaTime) {
         // Simple movement system
         const moveForce = 50;
