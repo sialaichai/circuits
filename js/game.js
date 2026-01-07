@@ -17,63 +17,40 @@ class Game {
         this.currentLevel = 1;
         this.clock = new THREE.Clock();
         this.mixers = [];
+
         // Check if Three.js is loaded
         if (typeof THREE === 'undefined') {
-            console.error('THREE is not defined! Check script loading order.');
-            console.log('Three.js should load BEFORE game.js');
-            
-            // Show error message
-            this.showLoadError('Three.js physics engine failed to load. Please refresh the page.');
+            console.error('THREE is not defined!');
+            this.showLoadError('Three.js failed to load.');
             return;
         }
         
         // Check if Cannon.js is loaded
         if (typeof CANNON === 'undefined') {
             console.error('CANNON is not defined!');
-            this.showLoadError('Physics engine failed to load. Please refresh.');
+            this.showLoadError('Physics engine failed to load.');
             return;
         }
         
         this.init();
-        // Add this to constructor after init()
+        
+        // Debug info
         setTimeout(() => {
             console.log('=== GAME DEBUG INFO ===');
             console.log('Scene objects:', this.scene.children.length);
             console.log('Player exists:', !!this.player);
             console.log('Camera position:', this.camera.position);
-            console.log('Press WASD to move, SPACE to jump');
         }, 2000);
     }
-        showLoadError(message) {
+
+    showLoadError(message) {
         const errorDiv = document.createElement('div');
         errorDiv.style.cssText = `
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(255, 0, 0, 0.9);
-            color: white;
-            padding: 30px;
-            border-radius: 10px;
-            z-index: 10000;
-            text-align: center;
-            max-width: 500px;
-            box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(255, 0, 0, 0.9); color: white; padding: 30px;
+            border-radius: 10px; z-index: 10000; text-align: center;
         `;
-        errorDiv.innerHTML = `
-            <h2>⚠️ Loading Error</h2>
-            <p>${message}</p>
-            <p style="font-size: 14px; margin-top: 20px;">
-                <strong>Debug Info:</strong><br>
-                THREE: ${typeof THREE}<br>
-                CANNON: ${typeof CANNON}<br>
-                Howler: ${typeof Howler}
-            </p>
-            <button onclick="window.location.reload()" 
-                    style="margin-top: 20px; padding: 10px 20px; background: white; color: red; border: none; border-radius: 5px; cursor: pointer;">
-                ↻ Refresh Page
-            </button>
-        `;
+        errorDiv.innerHTML = `<h2>⚠️ Loading Error</h2><p>${message}</p><button onclick="window.location.reload()">Refresh Page</button>`;
         document.body.appendChild(errorDiv);
     }
 
@@ -84,34 +61,24 @@ class Game {
         this.scene.fog = new THREE.Fog(0x0a0a2a, 10, 50);
         
         // Setup camera
-        this.camera = new THREE.PerspectiveCamera(
-            75,
-            window.innerWidth / window.innerHeight,
-            0.1,
-            1000
-        );
+        this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         
-         // In the init() method, update renderer setup:
+        // Setup renderer
         this.renderer = new THREE.WebGLRenderer({
             canvas: document.getElementById('gameCanvas'),
             antialias: true,
-            powerPreference: "high-performance",
-            alpha: false
+            powerPreference: "high-performance"
         });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        
-        // Add these lines to suppress warnings:
-        this.renderer.debug.checkShaderErrors = false; // Disable shader error checking in console
-        this.renderer.autoClear = true; // Ensure auto-clear is enabled
+        this.renderer.autoClear = true;
 
-        // In init() method, after setting up renderer:
         this.precompileShaders();
         
         // Setup physics world
         this.world = new CANNON.World();
-        this.world.gravity.set(0, -9.82, 0);
+        this.world.gravity.set(0, -20, 0); // Increased gravity for snappier jumping
         this.world.broadphase = new CANNON.NaiveBroadphase();
         this.world.solver.iterations = 10;
         
@@ -130,107 +97,77 @@ class Game {
         this.animate();
     }
 
-            precompileShaders() {
-            console.log('Precompiling shaders...');
-            
-            // Create dummy scene to force shader compilation
-            const dummyScene = new THREE.Scene();
-            const dummyCamera = new THREE.PerspectiveCamera();
-            
-            // Create and render dummy materials
-            const testMaterials = [
-                new THREE.MeshPhongMaterial({ color: 0xff0000 }),
-                new THREE.MeshPhongMaterial({ color: 0x00ff00 }),
-                new THREE.MeshPhongMaterial({ color: 0x0000ff }),
-                new THREE.MeshBasicMaterial({ color: 0xffffff })
-            ];
-            
-            const dummyMesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1));
-            
-            testMaterials.forEach((material, i) => {
-                dummyMesh.material = material;
-                dummyScene.add(dummyMesh);
-                this.renderer.render(dummyScene, dummyCamera);
-                dummyScene.remove(dummyMesh);
-            });
-            
-            // Clear dummy objects
-            dummyMesh.geometry.dispose();
-            testMaterials.forEach(material => material.dispose());
-            
-            console.log('Shader precompilation complete');
-        }
+    precompileShaders() {
+        const dummyScene = new THREE.Scene();
+        const dummyCamera = new THREE.PerspectiveCamera();
+        const dummyMesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshPhongMaterial({ color: 0xff0000 }));
+        dummyScene.add(dummyMesh);
+        this.renderer.render(dummyScene, dummyCamera);
+        dummyMesh.geometry.dispose();
+        dummyMesh.material.dispose();
+    }
     
     setupLighting() {
-    console.log('Setting up lighting...');
-    
-    // 1. Ambient Light (fills all shadows)
-    const ambientLight = new THREE.AmbientLight(0x404040, 0.8); // Increased intensity
-    this.scene.add(ambientLight);
-    
-    // 2. Main Directional Light (like sunlight)
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
-    directionalLight.position.set(20, 30, 10);
-    directionalLight.castShadow = true;
-    
-    // Configure shadow properties
-    directionalLight.shadow.mapSize.width = 2048;
-    directionalLight.shadow.mapSize.height = 2048;
-    directionalLight.shadow.camera.left = -50;
-    directionalLight.shadow.camera.right = 50;
-    directionalLight.shadow.camera.top = 50;
-    directionalLight.shadow.camera.bottom = -50;
-    directionalLight.shadow.camera.near = 0.5;
-    directionalLight.shadow.camera.far = 100;
-    
-    this.scene.add(directionalLight);
-    
-    // 3. Fill Light (from opposite side)
-    const fillLight = new THREE.DirectionalLight(0xaaaaff, 0.3);
-    fillLight.position.set(-20, 20, -10);
-    this.scene.add(fillLight);
-    
-    // 4. Point Lights for special effects
-    const pointLight1 = new THREE.PointLight(0x00ffff, 0.5, 30);
-    pointLight1.position.set(10, 10, 10);
-    this.scene.add(pointLight1);
-    
-    const pointLight2 = new THREE.PointLight(0xff00ff, 0.3, 30);
-    pointLight2.position.set(-10, 5, -10);
-    this.scene.add(pointLight2);
-    
-    // 5. Hemisphere Light (sky/ground lighting)
-    const hemisphereLight = new THREE.HemisphereLight(0xaaaaaa, 0x444444, 0.6);
-    this.scene.add(hemisphereLight);
-    
-    console.log('Lighting setup complete');
-}
+        console.log('💡 Setting up lighting...');
+        
+        // 1. Ambient Light
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.8);
+        this.scene.add(ambientLight);
+        
+        // 2. Main Directional Light
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        directionalLight.position.set(20, 30, 10);
+        directionalLight.castShadow = true;
+        
+        // Shadow config
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        directionalLight.shadow.camera.left = -50;
+        directionalLight.shadow.camera.right = 50;
+        directionalLight.shadow.camera.top = 50;
+        directionalLight.shadow.camera.bottom = -50;
+        
+        this.scene.add(directionalLight);
+        
+        // 3. Fill Lights
+        const fillLight = new THREE.DirectionalLight(0xaaaaff, 0.3);
+        fillLight.position.set(-20, 20, -10);
+        this.scene.add(fillLight);
+        
+        const pointLight1 = new THREE.PointLight(0x00ffff, 0.5, 30);
+        pointLight1.position.set(10, 10, 10);
+        this.scene.add(pointLight1);
+    }
 
     setupEventListeners() {
         window.addEventListener('resize', () => this.onWindowResize());
-        
-        // Keyboard controls
         document.addEventListener('keydown', (e) => this.onKeyDown(e));
         document.addEventListener('keyup', (e) => this.onKeyUp(e));
         
-        // UI button events
-        document.getElementById('startButton').addEventListener('click', () => this.startGame());
-        document.getElementById('continueButton').addEventListener('click', () => this.continueGame());
-        document.getElementById('pauseButton').addEventListener('click', () => this.togglePause());
-        document.getElementById('resumeButton').addEventListener('click', () => this.togglePause());
-        document.getElementById('restartButton').addEventListener('click', () => this.restartLevel());
-        document.getElementById('mainMenuButton').addEventListener('click', () => this.showMainMenu());
-        document.getElementById('nextLevelButton').addEventListener('click', () => this.nextLevel());
-        document.getElementById('submitAnswer').addEventListener('click', () => this.submitAnswer());
-        document.getElementById('hintButton').addEventListener('click', () => this.showHint());
+        // UI Buttons
+        const bindBtn = (id, fn) => {
+            const el = document.getElementById(id);
+            if(el) el.addEventListener('click', fn.bind(this));
+        };
         
-        // Option buttons
-        document.getElementById('optionsContainer').addEventListener('click', (e) => {
-            if (e.target.classList.contains('option-button')) {
-                const index = parseInt(e.target.dataset.index);
-                this.selectAnswer(index);
-            }
-        });
+        bindBtn('startButton', () => this.startGame());
+        bindBtn('continueButton', () => this.continueGame());
+        bindBtn('pauseButton', () => this.togglePause());
+        bindBtn('resumeButton', () => this.togglePause());
+        bindBtn('restartButton', () => this.restartLevel());
+        bindBtn('mainMenuButton', () => this.showMainMenu());
+        bindBtn('nextLevelButton', () => this.nextLevel());
+        bindBtn('submitAnswer', () => this.submitAnswer());
+        bindBtn('hintButton', () => this.showHint());
+        
+        const opts = document.getElementById('optionsContainer');
+        if(opts) {
+            opts.addEventListener('click', (e) => {
+                if (e.target.classList.contains('option-button')) {
+                    this.selectAnswer(parseInt(e.target.dataset.index));
+                }
+            });
+        }
     }
 
     startGame(level = 1) {
@@ -240,17 +177,9 @@ class Game {
         this.startTime = Date.now();
         this.isGameActive = true;
         this.isPaused = false;
-        
-        // Reset question flags
         this.questionManager.resetAskedFlags();
-        
-        // Load level
         this.loadLevel(level);
-        
-        // Show game UI
         this.ui.showGameUI();
-        
-        // Update HUD
         this.updateHUD();
     }
 
@@ -259,220 +188,158 @@ class Game {
         this.startGame(progress.level);
     }
 
-loadLevel(level) {
-    console.log('🚀 Loading level', level);
-    
-    // Clear scene but keep camera
-    while(this.scene.children.length > 0) { 
-        const child = this.scene.children[0];
-        if (child !== this.camera) {
-            this.scene.remove(child);
-        }
-    }
-    // 2. ADD THIS: Restore the lights!
-        this.setupLighting();
-    
-    // Reset physics
-    if (this.world) {
-        this.world = new CANNON.World();
-        this.world.gravity.set(0, -20, 0); // Increased gravity for better jumping
-    }
-    
-    // Get level data
-    const levelData = this.levelManager.getCurrentLevel();
-    console.log('📐 Maze dimensions:', levelData.maze.length, 'x', levelData.maze[0].length);
-    
-    // Create maze FIRST
-    this.createMaze(levelData.maze);
-    
-    // CREATE PLAYER
-    this.player = new Player(this, levelData.startPos);
-    console.log('👤 Player created at:', levelData.startPos);
-    
-    // 🔴 FIX: Position camera BEHIND and ABOVE player for third-person view
-    const mazeSize = Math.max(levelData.maze.length, levelData.maze[0].length);
-    
-    // Position camera behind player (third-person view)
-    // NEW (Correct):
-    // 1. Map Grid Y (startPos.y) to World Z (Depth)
-    // 2. Map Grid Z (startPos.z) to World Y (Height)
-    const playerX = levelData.startPos.x;
-    const playerY = (levelData.startPos.z * 5); // Height based on layer (z)
-    const playerZ = levelData.startPos.y;        // Depth based on grid row (y)
-    
-    // Position camera behind and above the player
-   const pX = levelData.startPos.x;
-    const pY = (levelData.startPos.z * 5); // Height
-    const pZ = levelData.startPos.y;        // Depth
-
-    // Position camera: High up (Y+12) and pulled back (Z+10)
-    this.camera.position.set(pX, pY + 12, pZ + 10);
-    
-    // Look at the player's ground position
-    this.camera.lookAt(pX, pY, pZ);
-
-// Look at the player's position on the ground
-this.camera.lookAt(playerX, playerY, playerZ);
-    
-    this.camera.lookAt(
-        levelData.startPos.x,
-        0,                          // Look at ground level
-        levelData.startPos.y        // Look at player's Z position
-    );
-    
-    console.log('📷 Camera positioned at:', this.camera.position);
-    console.log('📷 Camera looking at player start position');
-    
-    // Create other level elements
-    this.createQuestionGates(levelData.questionPositions);
-    this.createEnemies(levelData.enemies);
-    this.createCollectibles(levelData.collectibles);
-    this.createExit(levelData.exitPos);
-    
-    // 🔴 REMOVE or COMMENT OUT debug objects (they're cluttering the view)
-    // this.addDebugVisualizations(levelData);
-    
-    // Update UI
-    this.ui.updateLevelDisplay(level, levelData.name);
-    
-    // Force immediate render
-    this.renderer.render(this.scene, this.camera);
-}
-
-// ADD THIS METHOD for debugging
-addDebugVisualizations(levelData) {
-    console.log('🔍 Adding debug visualizations...');
-    
-    // 1. Add grid to see maze layout
-    const gridSize = Math.max(levelData.maze.length, levelData.maze[0].length);
-    const gridHelper = new THREE.GridHelper(gridSize * 2, gridSize * 2, 0x00ff00, 0x333333);
-    gridHelper.position.y = -0.5;
-    this.scene.add(gridHelper);
-    console.log('✅ Added grid helper');
-    
-    // 2. Add axes at origin
-    const axesHelper = new THREE.AxesHelper(5);
-    axesHelper.position.set(0, 0, 0);
-    this.scene.add(axesHelper);
-    console.log('✅ Added axes helper at origin');
-    
-    // 3. Add marker at player start
-    const markerGeometry = new THREE.SphereGeometry(0.3, 8, 8);
-    const markerMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
-    const startMarker = new THREE.Mesh(markerGeometry, markerMaterial);
-    startMarker.position.copy(levelData.startPos);
-    startMarker.position.y += 1;
-    this.scene.add(startMarker);
-    console.log('✅ Added yellow marker at player start:', levelData.startPos);
-    
-    // 4. Add marker at exit
-    const exitMarker = new THREE.Mesh(markerGeometry, markerMaterial);
-    exitMarker.material.color.setHex(0xff0000);
-    exitMarker.position.copy(levelData.exitPos);
-    exitMarker.position.y += 1;
-    this.scene.add(exitMarker);
-    console.log('✅ Added red marker at exit:', levelData.exitPos);
-    
-    // 5. Add a BIG RED CUBE at world center to orient yourself
-    const centerCubeGeometry = new THREE.BoxGeometry(2, 2, 2);
-    const centerCubeMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-    const centerCube = new THREE.Mesh(centerCubeGeometry, centerCubeMaterial);
-    centerCube.position.set(0, 5, 0);
-    this.scene.add(centerCube);
-    console.log('✅ Added big red cube at world center (0,5,0)');
-}
-
-// Add this helper method
-addTestMarker(position) {
-    // Add a visible marker at player start position
-    const markerGeometry = new THREE.SphereGeometry(0.5, 8, 8);
-    const markerMaterial = new THREE.MeshBasicMaterial({ 
-        color: 0xffff00,
-        transparent: true,
-        opacity: 0.7
-    });
-    const marker = new THREE.Mesh(markerGeometry, markerMaterial);
-    marker.position.set(position.x, position.y + 2, position.z);
-    this.scene.add(marker);
-    
-    // Remove after 3 seconds
-    setTimeout(() => {
-        if (this.scene && marker.parent === this.scene) {
-            this.scene.remove(marker);
-        }
-    }, 3000);
-    
-    console.log('Added yellow marker at start position');
-}
-
-// Create walls and path cells
-    for (let x = 0; x < maze.length; x++) {
-        for (let z = 0; z < maze[x].length; z++) { // Rename 'y' to 'z' for clarity
-            const cell = maze[x][z];
-            
-            // NOTE: We map grid (x, z) to World (x, z)
-            // World Y is height (up/down)
-            
-            if (cell.type === 'wall') {
-                // 1. Visual Wall
-                const wallH = 3; 
-                const wallGeometry = new THREE.BoxGeometry(1, wallH, 1);
-                const wall = new THREE.Mesh(wallGeometry, wallMaterial);
-                
-                // Position: Center the wall vertically at height/2
-                wall.position.set(x, wallH / 2, z); 
-                
-                wall.castShadow = true;
-                wall.receiveShadow = true;
-                this.scene.add(wall);
-                this.mazeWalls.push(wall);
-                
-                // 2. Physics Wall (MUST MATCH VISUALS)
-                if (this.world) {
-                    const wallBody = new CANNON.Body({
-                        mass: 0, // 0 mass = static (immovable)
-                        type: CANNON.Body.STATIC,
-                        position: new CANNON.Vec3(x, wallH / 2, z)
-                    });
-                    
-                    // Cannon box shape uses half-extents (width/2, height/2, depth/2)
-                    const wallShape = new CANNON.Box(new CANNON.Vec3(0.5, wallH / 2, 0.5));
-                    
-                    wallBody.addShape(wallShape);
-                    this.world.addBody(wallBody);
-                }
-                
-            } else {
-                // Path/Floor Tile
-                const pathGeometry = new THREE.BoxGeometry(0.95, 0.1, 0.95);
-                const path = new THREE.Mesh(pathGeometry, pathMaterial);
-                // Position slightly above 0 to avoid z-fighting with base ground
-                path.position.set(x, 0.05, z); 
-                path.receiveShadow = true;
-                this.scene.add(path);
+    loadLevel(level) {
+        console.log('🚀 Loading level', level);
+        
+        // 1. Clear scene (removes old maze AND LIGHTS)
+        while(this.scene.children.length > 0) { 
+            const child = this.scene.children[0];
+            if (child !== this.camera) {
+                this.scene.remove(child);
             }
         }
+
+        // 2. CRITICAL FIX: Restore Lights after clearing!
+        this.setupLighting();
+        
+        // 3. Reset Physics
+        if (this.world) {
+            this.world = new CANNON.World();
+            this.world.gravity.set(0, -20, 0); 
+            this.world.broadphase = new CANNON.NaiveBroadphase();
+        }
+        
+        // Get level data
+        const levelData = this.levelManager.getCurrentLevel();
+        
+        // Create maze (Visuals + Physics)
+        this.createMaze(levelData.maze);
+        
+        // Create Player
+        // Note: Player constructor should handle its own physics body creation
+        this.player = new Player(this, levelData.startPos);
+        
+        // 4. CRITICAL FIX: Camera Positioning
+        // Map Grid Coordinates to World Coordinates:
+        // Grid X -> World X
+        // Grid Y -> World Z (Depth)
+        // Grid Z -> World Y (Height/Layer)
+        const pX = levelData.startPos.x;
+        const pY = (levelData.startPos.z * 5); // Height based on layer
+        const pZ = levelData.startPos.y;        // Depth based on grid row
+
+        // Position camera: High up (Y+12) and pulled back (Z+10)
+        this.camera.position.set(pX, pY + 12, pZ + 10);
+        
+        // Look at the player's ground position
+        this.camera.lookAt(pX, pY, pZ);
+        
+        console.log(`📷 Camera set to: ${pX}, ${pY+12}, ${pZ+10}`);
+        
+        // Create other elements
+        this.createQuestionGates(levelData.questionPositions);
+        this.createEnemies(levelData.enemies);
+        this.createCollectibles(levelData.collectibles);
+        this.createExit(levelData.exitPos);
+        
+        this.ui.updateLevelDisplay(level, levelData.name);
+        this.renderer.render(this.scene, this.camera);
+    }
+
+    createMaze(maze) {
+        console.log('🔨 Creating maze...');
+        this.mazeWalls = [];
+        
+        // Materials
+        const wallMaterial = new THREE.MeshPhongMaterial({ color: 0x4a4a8a, shininess: 30 });
+        const floorMaterial = new THREE.MeshPhongMaterial({ color: 0x3a3a7a, side: THREE.DoubleSide });
+        const pathMaterial = new THREE.MeshPhongMaterial({ color: 0x2a2a6a });
+    
+        const groundSize = Math.max(maze.length, maze[0].length);
+        
+        // 1. Visual Ground
+        const groundGeometry = new THREE.PlaneGeometry(groundSize * 2, groundSize * 2);
+        const ground = new THREE.Mesh(groundGeometry, floorMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.y = -0.5;
+        ground.receiveShadow = true;
+        this.scene.add(ground);
+
+        // 2. CRITICAL FIX: Physics Ground (Infinite Plane)
+        if (this.world) {
+            const groundShape = new CANNON.Plane();
+            const groundBody = new CANNON.Body({ mass: 0, type: CANNON.Body.STATIC });
+            // Rotate to face up (CANNON planes face +Z, rotate -90 deg around X to face +Y)
+            groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
+            groundBody.position.set(0, -0.5, 0); 
+            groundBody.addShape(groundShape);
+            this.world.addBody(groundBody);
+        }
+        
+        // 3. Walls and Tiles
+        for (let x = 0; x < maze.length; x++) {
+            for (let z = 0; z < maze[x].length; z++) { // z corresponds to the 'y' index in grid
+                const cell = maze[x][z];
+                
+                // We map Grid(x, z) -> World(x, z)
+                // World Y is height
+                
+                if (cell.type === 'wall') {
+                    const wallH = 3;
+                    
+                    // Visual Wall
+                    const wallGeometry = new THREE.BoxGeometry(1, wallH, 1);
+                    const wall = new THREE.Mesh(wallGeometry, wallMaterial);
+                    wall.position.set(x, wallH / 2, z); 
+                    wall.castShadow = true;
+                    wall.receiveShadow = true;
+                    this.scene.add(wall);
+                    this.mazeWalls.push(wall);
+                    
+                    // Physics Wall
+                    if (this.world) {
+                        const wallBody = new CANNON.Body({
+                            mass: 0,
+                            position: new CANNON.Vec3(x, wallH / 2, z)
+                        });
+                        const wallShape = new CANNON.Box(new CANNON.Vec3(0.5, wallH / 2, 0.5));
+                        wallBody.addShape(wallShape);
+                        this.world.addBody(wallBody);
+                    }
+                    
+                } else {
+                    // Path Tile
+                    const pathGeometry = new THREE.BoxGeometry(0.95, 0.1, 0.95);
+                    const path = new THREE.Mesh(pathGeometry, pathMaterial);
+                    path.position.set(x, 0, z);
+                    path.receiveShadow = true;
+                    this.scene.add(path);
+                }
+            }
+        }
+        
+        console.log(`✅ Created ${this.mazeWalls.length} walls`);
     }
     
     createQuestionGates(positions) {
+        if(!positions) return;
         const gateGeometry = new THREE.BoxGeometry(0.8, 2, 0.1);
         
-        positions.forEach((pos, index) => {
+        positions.forEach((pos) => {
             const question = this.questionManager.getRandomQuestion(this.currentLevel);
             if (!question) return;
             
-            // Create gate material based on Bloom's level
             const colors = [0x4CAF50, 0x2196F3, 0xFF9800, 0x9C27B0, 0xF44336];
             const gateMaterial = new THREE.MeshPhongMaterial({ 
                 color: colors[this.currentLevel - 1],
-                emissive: colors[this.currentLevel - 1],
-                emissiveIntensity: 0.3,
-                transparent: true,
-                opacity: 0.8
+                transparent: true, opacity: 0.8 
             });
             
             const gate = new THREE.Mesh(gateGeometry, gateMaterial);
-            gate.position.set(pos.x, pos.y, pos.z);
+            // Map position carefully: pos.y from JSON is usually Depth(Z), pos.z is Height(Y) or Layer
+            // Assuming standard map: x->x, y->z, z->y
+            gate.position.set(pos.x, (pos.z*2)+1, pos.y);
+            
             gate.userData = {
                 type: 'question',
                 questionId: question.id,
@@ -481,28 +348,27 @@ addTestMarker(position) {
             };
             this.scene.add(gate);
             
-            // Add pulsing animation
-            this.animateGate(gate);
-            
-            // Add physics trigger
+            // Physics Trigger
             const triggerBody = new CANNON.Body({
                 mass: 0,
                 isTrigger: true,
-                position: new CANNON.Vec3(pos.x, pos.y, pos.z)
+                position: new CANNON.Vec3(pos.x, (pos.z*2)+1, pos.y)
             });
-            const triggerShape = new CANNON.Box(new CANNON.Vec3(0.5, 1, 0.5));
-            triggerBody.addShape(triggerShape);
+            triggerBody.addShape(new CANNON.Box(new CANNON.Vec3(0.5, 1, 0.5)));
             triggerBody.userData = gate.userData;
             this.world.addBody(triggerBody);
+            
+            this.animateGate(gate);
         });
     }
 
     animateGate(gate) {
         let time = 0;
+        const startY = gate.position.y;
         const animate = () => {
-            if (!gate.userData.solved) {
+            if (!gate.userData.solved && this.scene.getObjectById(gate.id)) {
                 time += 0.05;
-                gate.position.y = gate.position.y + Math.sin(time) * 0.01;
+                gate.position.y = startY + Math.sin(time) * 0.1;
                 gate.material.opacity = 0.7 + Math.sin(time) * 0.3;
                 requestAnimationFrame(animate);
             }
@@ -511,175 +377,70 @@ addTestMarker(position) {
     }
 
     createEnemies(enemies) {
+        if(!enemies) return;
         enemies.forEach(enemyData => {
-            // Create enemy based on type
             let geometry, material;
-            
-            switch(enemyData.type) {
-                case 'resistor':
-                    geometry = new THREE.CylinderGeometry(0.2, 0.2, 0.5, 8);
-                    material = new THREE.MeshPhongMaterial({ color: 0xff9900 });
-                    break;
-                case 'capacitor':
-                    geometry = new THREE.BoxGeometry(0.4, 0.6, 0.4);
-                    material = new THREE.MeshPhongMaterial({ color: 0x00aaff });
-                    break;
-                case 'inductor':
-                    geometry = new THREE.TorusGeometry(0.3, 0.1, 8, 16);
-                    material = new THREE.MeshPhongMaterial({ color: 0xaa00ff });
-                    break;
-                case 'transistor':
-                    geometry = new THREE.ConeGeometry(0.3, 0.6, 4);
-                    material = new THREE.MeshPhongMaterial({ color: 0xff5500 });
-                    break;
-                case 'ic':
-                    geometry = new THREE.BoxGeometry(0.5, 0.2, 0.5);
-                    material = new THREE.MeshPhongMaterial({ color: 0x333333 });
-                    break;
-            }
+            const color = 0xff9900;
+            geometry = new THREE.SphereGeometry(0.3);
+            material = new THREE.MeshPhongMaterial({ color: color });
             
             const enemy = new THREE.Mesh(geometry, material);
+            // Map coords: x->x, y->z
             enemy.position.set(enemyData.x, 0.5, enemyData.y);
             enemy.castShadow = true;
-            enemy.userData = {
-                type: 'enemy',
-                speed: enemyData.speed,
-                pattern: enemyData.pattern || 'patrol',
-                direction: new THREE.Vector3(1, 0, 0)
-            };
+            enemy.userData = { type: 'enemy', ...enemyData };
             this.scene.add(enemy);
             
-            // Add physics body
             const enemyBody = new CANNON.Body({
                 mass: 1,
                 position: new CANNON.Vec3(enemyData.x, 0.5, enemyData.y)
             });
-            const enemyShape = new CANNON.Sphere(0.3);
-            enemyBody.addShape(enemyShape);
+            enemyBody.addShape(new CANNON.Sphere(0.3));
             this.world.addBody(enemyBody);
         });
     }
 
     createCollectibles(collectibles) {
+        if(!collectibles) return;
         collectibles.forEach(item => {
-            let geometry, material;
-            
-            switch(item.type) {
-                case 'battery':
-                    geometry = new THREE.CylinderGeometry(0.2, 0.2, 0.4, 8);
-                    material = new THREE.MeshPhongMaterial({ 
-                        color: 0xff0000,
-                        emissive: 0xff0000,
-                        emissiveIntensity: 0.5
-                    });
-                    break;
-                case 'wire':
-                    geometry = new THREE.TorusGeometry(0.2, 0.05, 8, 16);
-                    material = new THREE.MeshPhongMaterial({ 
-                        color: 0xffff00,
-                        emissive: 0xffff00,
-                        emissiveIntensity: 0.3
-                    });
-                    break;
-                case 'multimeter':
-                    geometry = new THREE.BoxGeometry(0.3, 0.1, 0.4);
-                    material = new THREE.MeshPhongMaterial({ 
-                        color: 0x00ffff,
-                        emissive: 0x00aaaa,
-                        emissiveIntensity: 0.4
-                    });
-                    break;
-                case 'oscilloscope':
-                    geometry = new THREE.BoxGeometry(0.4, 0.2, 0.3);
-                    material = new THREE.MeshPhongMaterial({ 
-                        color: 0xff00ff,
-                        emissive: 0xaa00aa,
-                        emissiveIntensity: 0.4
-                    });
-                    break;
-                case 'gold_wire':
-                    geometry = new THREE.TorusKnotGeometry(0.2, 0.05, 64, 8);
-                    material = new THREE.MeshPhongMaterial({ 
-                        color: 0xffd700,
-                        emissive: 0xffaa00,
-                        emissiveIntensity: 0.6
-                    });
-                    break;
-                case 'diamond_chip':
-                    geometry = new THREE.OctahedronGeometry(0.3);
-                    material = new THREE.MeshPhongMaterial({ 
-                        color: 0xffffff,
-                        emissive: 0xffffff,
-                        emissiveIntensity: 0.8,
-                        transparent: true,
-                        opacity: 0.9
-                    });
-                    break;
-            }
+            const geometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+            const material = new THREE.MeshPhongMaterial({ color: 0xffd700 });
             
             const collectible = new THREE.Mesh(geometry, material);
             collectible.position.set(item.x, 1, item.y);
             collectible.castShadow = true;
-            collectible.userData = {
-                type: 'collectible',
-                value: item.value,
-                collected: false
-            };
+            collectible.userData = { type: 'collectible', value: item.value || 100 };
             this.scene.add(collectible);
             
-            // Add rotation animation
-            this.animateCollectible(collectible);
+            const animate = () => {
+                if (this.scene.getObjectById(collectible.id)) {
+                    collectible.rotation.y += 0.02;
+                    requestAnimationFrame(animate);
+                }
+            };
+            animate();
         });
-    }
-
-    animateCollectible(collectible) {
-        const animate = () => {
-            if (!collectible.userData.collected) {
-                collectible.rotation.y += 0.02;
-                collectible.position.y = 1 + Math.sin(Date.now() * 0.002) * 0.2;
-                requestAnimationFrame(animate);
-            }
-        };
-        animate();
     }
 
     createExit(position) {
+        if(!position) return;
         const exitGeometry = new THREE.CylinderGeometry(0.5, 0.5, 0.1, 16);
-        const exitMaterial = new THREE.MeshPhongMaterial({ 
-            color: 0x00ff00,
-            emissive: 0x00aa00,
-            emissiveIntensity: 0.5,
-            transparent: true,
-            opacity: 0.8
-        });
+        const exitMaterial = new THREE.MeshPhongMaterial({ color: 0x00ff00, transparent: true, opacity: 0.8 });
         
         const exit = new THREE.Mesh(exitGeometry, exitMaterial);
-        exit.position.set(position.x, 0, position.z);
+        // Map coords: x->x, y->z
+        exit.position.set(position.x, 0.05, position.y);
         exit.userData = { type: 'exit' };
         this.scene.add(exit);
-        
-        // Add pulsing animation
-        const animateExit = () => {
-            exit.scale.x = 1 + Math.sin(Date.now() * 0.002) * 0.2;
-            exit.scale.z = 1 + Math.sin(Date.now() * 0.002) * 0.2;
-            requestAnimationFrame(animateExit);
-        };
-        animateExit();
     }
 
     checkQuestionGate(playerPosition) {
-        // Simple proximity check for question gates
-        const gates = this.scene.children.filter(child => 
-            child.userData && child.userData.type === 'question'
-        );
-        
+        const gates = this.scene.children.filter(child => child.userData && child.userData.type === 'question');
         for (const gate of gates) {
             if (gate.userData.solved) continue;
-            
-            const distance = playerPosition.distanceTo(gate.position);
-            if (distance < 2) {
+            if (playerPosition.distanceTo(gate.position) < 2) {
                 this.showQuestion(gate.userData.bloomLevel);
-                gate.userData.solved = true;
+                gate.userData.solved = true; // Mark as solving
                 break;
             }
         }
@@ -687,15 +448,13 @@ addTestMarker(position) {
 
     showQuestion(bloomLevel) {
         const question = this.questionManager.getRandomQuestion(bloomLevel);
-        if (!question) return;
-        
-        this.ui.showQuestion(question);
-        this.isPaused = true;
+        if (question) {
+            this.ui.showQuestion(question);
+            this.isPaused = true;
+        }
     }
 
-    selectAnswer(index) {
-        this.ui.selectAnswer(index);
-    }
+    selectAnswer(index) { this.ui.selectAnswer(index); }
 
     submitAnswer() {
         const selected = this.ui.getSelectedAnswer();
@@ -708,26 +467,19 @@ addTestMarker(position) {
             this.questionsSolved++;
             this.score += 100 * this.currentLevel;
             this.ui.showCorrectAnswer(question.explanation);
-            
-            // Open gate in game world
             this.openQuestionGate();
             
             setTimeout(() => {
                 this.ui.hideQuestion();
                 this.isPaused = false;
-                
-                // Check if level complete
-                const levelData = this.levelManager.getCurrentLevel();
-                if (this.questionsSolved >= levelData.questionsRequired) {
+                if (this.questionsSolved >= this.levelManager.getCurrentLevel().questionsRequired) {
                     this.unlockExit();
                 }
-                
                 this.updateHUD();
             }, 2000);
         } else {
             this.ui.showWrongAnswer(question.explanation);
             this.score -= 50;
-            
             setTimeout(() => {
                 this.ui.hideQuestion();
                 this.isPaused = false;
@@ -737,47 +489,33 @@ addTestMarker(position) {
     }
 
     openQuestionGate() {
-        // Find and remove/change the solved gate
-        const gates = this.scene.children.filter(child => 
-            child.userData && child.userData.type === 'question' && child.userData.solved
-        );
-        
+        const gates = this.scene.children.filter(c => c.userData && c.userData.type === 'question' && c.userData.solved);
         gates.forEach(gate => {
             gate.material.color.set(0x00ff00);
-            gate.material.emissive.set(0x00aa00);
             gate.material.opacity = 0.3;
         });
     }
 
     unlockExit() {
-        const exits = this.scene.children.filter(child => 
-            child.userData && child.userData.type === 'exit'
-        );
-        
+        const exits = this.scene.children.filter(c => c.userData && c.userData.type === 'exit');
         exits.forEach(exit => {
             exit.material.color.set(0xffff00);
             exit.material.emissive.set(0xffaa00);
-            exit.material.emissiveIntensity = 1;
         });
     }
 
     showHint() {
-        const question = this.questionManager.getCurrentQuestion();
-        if (question && question.hint) {
-            this.ui.showHint(question.hint);
-        }
+        const q = this.questionManager.getCurrentQuestion();
+        if (q && q.hint) this.ui.showHint(q.hint);
     }
 
     updateHUD() {
         const currentTime = Math.floor((Date.now() - this.startTime) / 1000);
-        const minutes = Math.floor(currentTime / 60).toString().padStart(2, '0');
-        const seconds = (currentTime % 60).toString().padStart(2, '0');
-        
         this.ui.updateHUD({
             score: this.score,
             level: this.currentLevel,
             questions: `${this.questionsSolved}/5`,
-            time: `${minutes}:${seconds}`,
+            time: `${Math.floor(currentTime/60)}:${(currentTime%60).toString().padStart(2,'0')}`,
             voltage: `${this.score}V`
         });
     }
@@ -787,28 +525,16 @@ addTestMarker(position) {
         this.ui.togglePauseMenu(this.isPaused);
     }
 
-    restartLevel() {
-        this.startGame(this.currentLevel);
-    }
-
-    showMainMenu() {
-        this.isGameActive = false;
-        this.ui.showMainMenu();
-    }
-
+    restartLevel() { this.startGame(this.currentLevel); }
+    showMainMenu() { this.isGameActive = false; this.ui.showMainMenu(); }
+    
     nextLevel() {
         if (this.currentLevel < 5) {
             this.levelManager.saveProgress(this.score, this.questionsSolved);
-            this.currentLevel++;
-            this.startGame(this.currentLevel);
+            this.startGame(this.currentLevel + 1);
         } else {
-            this.completeGame();
+            this.ui.showGameComplete(this.score, this.questionsSolved);
         }
-    }
-
-    completeGame() {
-        // Game completion logic
-        this.ui.showGameComplete(this.score, this.questionsSolved);
     }
 
     onWindowResize() {
@@ -817,59 +543,26 @@ addTestMarker(position) {
         this.renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
-onKeyDown(event) {
-    console.log('Key pressed:', event.key); // Debug logging
-    
-    if (!this.player) {
-        console.log('Player not initialized yet');
-        return;
+    onKeyDown(event) {
+        if (!this.player) return;
+        const key = event.key.toLowerCase();
+        
+        if (['w','a','s','d',' ','e','r'].includes(key)) event.preventDefault();
+        
+        switch(key) {
+            case 'w': this.player.moveForward = true; break;
+            case 's': this.player.moveBackward = true; break;
+            case 'a': this.player.moveLeft = true; break;
+            case 'd': this.player.moveRight = true; break;
+            case ' ': this.player.jump(); break;
+            case 'e': this.player.dig(); break;
+            case 'r': this.checkQuestionGate(this.player.mesh.position); break;
+            case 'escape': this.togglePause(); break;
+        }
     }
-    
-    // Prevent default for game keys
-    const gameKeys = ['w', 'a', 's', 'd', ' ', 'e', 'r', 'escape'];
-    if (gameKeys.includes(event.key.toLowerCase())) {
-        event.preventDefault();
-    }
-    
-    switch(event.key.toLowerCase()) {
-        case 'w': 
-            this.player.moveForward = true; 
-            console.log('Move forward');
-            break;
-        case 's': 
-            this.player.moveBackward = true; 
-            console.log('Move backward');
-            break;
-        case 'a': 
-            this.player.moveLeft = true; 
-            console.log('Move left');
-            break;
-        case 'd': 
-            this.player.moveRight = true; 
-            console.log('Move right');
-            break;
-        case ' ': 
-            console.log('Jump');
-            this.player.jump(); 
-            break;
-        case 'e': 
-            console.log('Dig');
-            this.player.dig(); 
-            break;
-        case 'r': 
-            console.log('Check question');
-            this.checkQuestionGate(this.player.mesh.position); 
-            break;
-        case 'escape': 
-            console.log('Toggle pause');
-            this.togglePause(); 
-            break;
-    }
-}
 
     onKeyUp(event) {
         if (!this.player) return;
-        
         switch(event.key.toLowerCase()) {
             case 'w': this.player.moveForward = false; break;
             case 's': this.player.moveBackward = false; break;
@@ -878,141 +571,45 @@ onKeyDown(event) {
         }
     }
 
-animate() {
-    // Use fixed time step for physics
-    const fixedTimeStep = 1.0 / 60.0; // 60 FPS physics
-    
-    requestAnimationFrame(() => this.animate());
-    
-    if (!this.isGameActive || this.isPaused) return;
-    
-    const deltaTime = Math.min(this.clock.getDelta(), 0.1);
-    
-    // Update physics with fixed time step
-    if (this.world) {
-        this.world.step(fixedTimeStep, deltaTime, 3);
-    }
-    
-    // Update player
-    if (this.player) {
-        this.player.update(deltaTime);
+    animate() {
+        const fixedTimeStep = 1.0 / 60.0;
+        requestAnimationFrame(() => this.animate());
         
-        // Camera update code...
-    }
-    
-    // Update other game elements
-    this.updateGameLogic(deltaTime);
-    
-    // Only render once per frame
-    try {
+        if (!this.isGameActive || this.isPaused) return;
+        
+        const deltaTime = Math.min(this.clock.getDelta(), 0.1);
+        
+        if (this.world) {
+            this.world.step(fixedTimeStep, deltaTime, 3);
+        }
+        
+        if (this.player) {
+            this.player.update(deltaTime);
+        }
+        
+        this.checkExitCollision();
         this.renderer.render(this.scene, this.camera);
-    } catch (e) {
-        // Silent catch for WebGL warnings
-        if (!e.message.includes('uniformMatrix')) {
-            console.error('Render error:', e);
-        }
-    }
-}
-
-updateGameLogic(deltaTime) {
-    // Update enemies
-    if (this.updateEnemies && typeof this.updateEnemies === 'function') {
-        try {
-            this.updateEnemies(deltaTime);
-        } catch (e) {
-            console.error('Enemy update error:', e);
-        }
     }
     
-    // Update animations
-    if (this.mixers && this.mixers.length > 0) {
-        this.mixers.forEach(mixer => {
-            try {
-                mixer.update(deltaTime);
-            } catch (e) {
-                console.error('Mixer update error:', e);
-            }
-        });
-    }
-    
-    // Check for exit
-    if (this.player) {
-        this.checkExit(this.player.mesh.position);
-    }
-}
-
-    checkExit(playerPosition) {
-        const exits = this.scene.children.filter(child => 
-            child.userData && child.userData.type === 'exit'
-        );
-        
+    checkExitCollision() {
+        if(!this.player) return;
+        const exits = this.scene.children.filter(c => c.userData && c.userData.type === 'exit');
         for (const exit of exits) {
-            const distance = playerPosition.distanceTo(exit.position);
-            if (distance < 1) {
+            if (this.player.mesh.position.distanceTo(exit.position) < 1) {
                 this.levelComplete();
                 break;
             }
         }
     }
-
-    playerHit() {
-        this.score = Math.max(0, this.score - 100);
-        // Add visual feedback for hit
-        if (this.player) {
-            this.player.mesh.material.emissive.set(0xff0000);
-            setTimeout(() => {
-                if (this.player) {
-                    this.player.mesh.material.emissive.set(0x000000);
-                }
-            }, 500);
-        }
-        this.updateHUD();
-    }
-
+    
     levelComplete() {
         this.isPaused = true;
         this.levelManager.saveProgress(this.score, this.questionsSolved);
         this.ui.showLevelComplete(this.score, this.questionsSolved);
     }
-
-
-    debugSceneAndCamera() {
-    console.log('=== SCENE & CAMERA DEBUG ===');
-    
-    // 1. Check scene contents
-    console.log('Scene has', this.scene.children.length, 'children:');
-    this.scene.children.forEach((child, i) => {
-        console.log(`  ${i}: ${child.type || child.constructor.name} at`, child.position);
-    });
-    
-    // 2. Check camera
-    console.log('Camera position:', this.camera.position);
-    console.log('Camera rotation:', this.camera.rotation);
-    
-    // 3. Add debug objects to understand positions
-    this.addDebugHelpers();
 }
 
-    addDebugHelpers() {
-        // Add axes helper at origin
-        const axesHelper = new THREE.AxesHelper(5);
-        axesHelper.position.set(0, 0, 0);
-        this.scene.add(axesHelper);
-        
-        // Add grid helper
-        const gridHelper = new THREE.GridHelper(20, 20, 0x00ffff, 0x444444);
-        gridHelper.position.y = -0.5;
-        this.scene.add(gridHelper);
-        
-        // Add camera helper
-        const cameraHelper = new THREE.CameraHelper(this.camera);
-        this.scene.add(cameraHelper);
-        
-        console.log('Added debug helpers: axes, grid, camera helper');
-    }
-}
-
-// Initialize game when page loads
+// Initialize
 window.addEventListener('load', () => {
     window.game = new Game();
 });
