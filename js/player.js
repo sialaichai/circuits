@@ -95,13 +95,11 @@ class Player {
                 this.mesh.position.z
             ),
             shape: new CANNON.Sphere(0.4),
-            // ... rest of your config
+            linearDamping: 0.3, // Less damping
+        angularDamping: 0.3
         });
       
-        shape: new CANNON.Sphere(0.4), // Slightly larger
-        linearDamping: 0.3, // Less damping
-        angularDamping: 0.3
-    });
+      
     
     // Allow some rotation for visual effect
     this.body.fixedRotation = false;
