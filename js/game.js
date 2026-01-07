@@ -35,6 +35,14 @@ class Game {
         }
         
         this.init();
+        // Add this to constructor after init()
+        setTimeout(() => {
+            console.log('=== GAME DEBUG INFO ===');
+            console.log('Scene objects:', this.scene.children.length);
+            console.log('Player exists:', !!this.player);
+            console.log('Camera position:', this.camera.position);
+            console.log('Press WASD to move, SPACE to jump');
+        }, 2000);
     }
         showLoadError(message) {
         const errorDiv = document.createElement('div');
