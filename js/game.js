@@ -362,22 +362,31 @@ addTestMarker(position) {
 
 createMaze(maze) {
     console.log('🔨 Creating maze...');
+        // Create unique material instances for walls and floors
+    // This prevents shader program conflicts
     
-    // Wall material
-    const wallMaterial = new THREE.MeshPhongMaterial({ 
+    const wallMaterial = () => new THREE.MeshPhongMaterial({ 
         color: 0x4a4a8a,
         emissive: 0x2a2a6a,
-        emissiveIntensity: 0.5
+        emissiveIntensity: 0.5,
+        shininess: 30
     });
     
-    // Floor material
-    const floorMaterial = new THREE.MeshPhongMaterial({ 
+    const floorMaterial = () => new THREE.MeshPhongMaterial({ 
         color: 0x3a3a7a,
         emissive: 0x1a1a5a,
         emissiveIntensity: 0.3,
-        side: THREE.DoubleSide
+        side: THREE.DoubleSide,
+        shininess: 20
     });
     
+    const pathMaterial = () => new THREE.MeshPhongMaterial({ 
+        color: 0x2a2a6a,
+        emissive: 0x1a1a4a,
+        emissiveIntensity: 0.2,
+        shininess: 10
+    });
+ 
     this.mazeWalls = [];
     
     // Create ground plane FIRST (at y=0)
