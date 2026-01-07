@@ -343,66 +343,80 @@ addTestMarker(position) {
     console.log('Added yellow marker at start position');
 }
 
-    createMaze(maze) {
-        console.log('Creating maze...');
-        
-        // Store maze reference for debugging
-        this.currentMaze = maze;
-        
-        const wallGeometry = new THREE.BoxGeometry(1, 2, 1);
-        const wallMaterial = new THREE.MeshPhongMaterial({ 
-            color: 0x3a3a6a,
-            emissive: 0x1a1a4a,
-            emissiveIntensity: 0.3
-        });
-        
-        const floorGeometry = new THREE.BoxGeometry(1, 0.1, 1);
-        const floorMaterial = new THREE.MeshPhongMaterial({ 
-            color: 0x2a2a5a,
-            emissive: 0x1a1a3a,
-            emissiveIntensity: 0.2
-        });
-        
-        // Count walls for debugging
-        let wallCount = 0;
-        let floorCount = 0;
-        
-        for (let x = 0; x < maze.length; x++) {
-            for (let y = 0; y < maze[x].length; y++) {
-                const cell = maze[x][y];
+createMaze(maze) {
+    console.log('🏗️ Creating maze with', maze.length, 'x', maze[0].length, 'cells');
+    
+    // Use BRIGHTER materials
+    const wallMaterial = new THREE.MeshPhongMaterial({ 
+        color: 0x4a4a8a,        // Brighter blue
+        emissive: 0x2a2a6a,     // Brighter emission
+        emissiveIntensity: 0.4, // Increased
+        shininess: 30
+    });
+    
+    const floorMaterial = new THREE.MeshPhongMaterial({ 
+        color: 0x3a3a7a,        // Brighter
+        emissive: 0x2a2a5a,
+        emissiveIntensity: 0.3
+    });
+    
+    let wallCount = 0;
+    let floorCount = 0;
+    
+    for (let x = 0; x < maze.length; x++) {
+        for (let y = 0; y < maze[x].length; y++) {
+            const cell = maze[x][y];
+            
+            if (cell.type === 'wall') {
+                // Create visible wall
+                const wallGeometry = new THREE.BoxGeometry(1, 2, 1);
+                const wall = new THREE.Mesh(wallGeometry, wallMaterial);
                 
-                if (cell.type === 'wall') {
-                    // Create wall
-                    const wall = new THREE.Mesh(wallGeometry, wallMaterial);
-                    wall.position.set(x, 1, y); // Center at y=1 (height 2)
-                    wall.castShadow = true;
-                    wall.receiveShadow = true;
-                    this.scene.add(wall);
-                    wallCount++;
-                } else {
-                    // Create floor
-                    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-                    floor.position.set(x, -0.45, y);
-                    floor.receiveShadow = true;
-                    this.scene.add(floor);
-                    floorCount++;
-                }
+                // Position wall CORRECTLY (center at y=1 for height 2)
+                wall.position.set(x, 1, y);
+                wall.castShadow = true;
+                wall.receiveShadow = true;
+                
+                this.scene.add(wall);
+                wallCount++;
+                
+                // Add wireframe for better visibility
+                const wireframe = new THREE.WireframeGeometry(wallGeometry);
+                const line = new THREE.LineSegments(wireframe);
+                line.position.set(x, 1, y);
+                line.material.color.setHex(0x00ffff);
+                this.scene.add(line);
+                
+            } else {
+                // Create floor
+                const floorGeometry = new THREE.BoxGeometry(1, 0.1, 1);
+                const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+                floor.position.set(x, -0.45, y);
+                floor.receiveShadow = true;
+                this.scene.add(floor);
+                floorCount++;
             }
         }
-        
-        console.log(`Created ${wallCount} walls and ${floorCount} floor tiles`);
-        
-        // Add a large ground plane under everything
-        const groundGeometry = new THREE.PlaneGeometry(50, 50);
-        const groundMaterial = new THREE.MeshPhongMaterial({ 
-            color: 0x1a1a3a,
-            side: THREE.DoubleSide
-        });
-        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-        ground.rotation.x = -Math.PI / 2;
-        ground.position.y = -1;
-        this.scene.add(ground);
     }
+    
+    console.log(`✅ Created ${wallCount} walls and ${floorCount} floor tiles`);
+    
+    // ADD A LARGE GROUND PLANE UNDER EVERYTHING
+    const groundSize = Math.max(maze.length, maze[0].length) * 2;
+    const groundGeometry = new THREE.PlaneGeometry(groundSize, groundSize);
+    const groundMaterial = new THREE.MeshPhongMaterial({ 
+        color: 0x2a2a5a,
+        side: THREE.DoubleSide,
+        emissive: 0x1a1a3a,
+        emissiveIntensity: 0.2
+    });
+    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -1;
+    this.scene.add(ground);
+    
+    console.log('✅ Added large ground plane');
+}
 
     createQuestionGates(positions) {
         const gateGeometry = new THREE.BoxGeometry(0.8, 2, 0.1);
