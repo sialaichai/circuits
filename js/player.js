@@ -1,3 +1,4 @@
+// player.js - Updated version
 class Player {
     constructor(game, startPos) {
         this.game = game;
@@ -24,8 +25,8 @@ class Player {
     }
     
     createPlayerMesh() {
-        // Create a character-like mesh
-        const bodyGeometry = new THREE.CapsuleGeometry(0.3, 0.8, 4, 8);
+        // Create body using CylinderGeometry instead of CapsuleGeometry
+        const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1.2, 8);
         const bodyMaterial = new THREE.MeshPhongMaterial({ 
             color: 0x00aaff,
             shininess: 30
@@ -35,8 +36,17 @@ class Player {
         this.mesh.castShadow = true;
         this.mesh.receiveShadow = true;
         
+        // Create head (sphere)
+        const headGeometry = new THREE.SphereGeometry(0.35, 8, 8);
+        const headMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x00aaff 
+        });
+        const head = new THREE.Mesh(headGeometry, headMaterial);
+        head.position.y = 0.7;
+        this.mesh.add(head);
+        
         // Add circuit-like details
-        const wireGeometry = new THREE.TorusGeometry(0.35, 0.05, 4, 16);
+        const wireGeometry = new THREE.TorusGeometry(0.4, 0.05, 4, 16);
         const wireMaterial = new THREE.MeshPhongMaterial({ 
             color: 0xffff00,
             emissive: 0xffff00,
@@ -48,7 +58,7 @@ class Player {
         this.mesh.add(wire);
         
         // Add glowing core
-        const coreGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+        const coreGeometry = new THREE.SphereGeometry(0.15, 8, 8);
         const coreMaterial = new THREE.MeshPhongMaterial({ 
             color: 0x00ffff,
             emissive: 0x00ffff,
@@ -58,13 +68,27 @@ class Player {
         const core = new THREE.Mesh(coreGeometry, coreMaterial);
         core.position.y = 0.5;
         this.mesh.add(core);
+        
+        // Add arms
+        const armGeometry = new THREE.CylinderGeometry(0.08, 0.08, 0.6, 6);
+        const armMaterial = new THREE.MeshPhongMaterial({ color: 0x00aaff });
+        
+        const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+        leftArm.position.set(-0.4, 0.3, 0);
+        leftArm.rotation.z = Math.PI / 4;
+        this.mesh.add(leftArm);
+        
+        const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+        rightArm.position.set(0.4, 0.3, 0);
+        rightArm.rotation.z = -Math.PI / 4;
+        this.mesh.add(rightArm);
     }
     
     createPhysicsBody() {
         this.body = new CANNON.Body({
             mass: 5,
             position: new CANNON.Vec3(0, 2, 0),
-            shape: new CANNON.Sphere(0.4),
+            shape: new CANNON.Sphere(0.5),
             linearDamping: 0.9,
             angularDamping: 0.9
         });
@@ -133,7 +157,12 @@ class Player {
         
         // Add bobbing animation when moving
         if (velocity.length() > 0 && this.canJump) {
-            this.mesh.position.y += Math.sin(Date.now() * 0.01) * 0.05;
+            const bobAmount = Math.sin(Date.now() * 0.01) * 0.05;
+            this.mesh.children.forEach(child => {
+                if (child !== this.mesh) {
+                    child.position.y += bobAmount * 0.5;
+                }
+            });
         }
     }
     
