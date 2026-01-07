@@ -291,13 +291,22 @@ loadLevel(level) {
     const mazeSize = Math.max(levelData.maze.length, levelData.maze[0].length);
     
     // Position camera behind player (third-person view)
-    // CORRECT: Maps grid Y to World Z
-    // We assume levelData.startPos.z is the "layer" or floor height (usually 0)
+    // NEW (Correct):
+    // 1. Map Grid Y (startPos.y) to World Z (Depth)
+    // 2. Map Grid Z (startPos.z) to World Y (Height)
+    const playerX = levelData.startPos.x;
+    const playerY = (levelData.startPos.z * 5); // Height based on layer (z)
+    const playerZ = levelData.startPos.y;        // Depth based on grid row (y)
+    
+    // Position camera behind and above the player
     this.camera.position.set(
-        levelData.startPos.x - 6,   // Move back in X
-        10,                         // Fixed height for good overview
-        levelData.startPos.y + 6    // Move back in Z (using startPos.y as Z)
+    playerX,        
+    playerY + 12,   // High up to see the maze structure
+    playerZ + 10    // Backwards to frame the view
     );
+
+// Look at the player's position on the ground
+this.camera.lookAt(playerX, playerY, playerZ);
     
     this.camera.lookAt(
         levelData.startPos.x,
